@@ -1,4 +1,4 @@
-# Crew Health Twin
+# HELIOS (Health Evaluation and Life Indicators Observation System)
 
 A 3D health twin for astronauts. Instead of treating the body as a picture, the app treats it as
 a **data structure**: every body system (skeletal, cardiovascular, muscular...) is an object with
