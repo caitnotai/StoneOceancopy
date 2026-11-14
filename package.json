@@ -14,7 +14,12 @@
     "sources:smoke": "node tools/ingest/smoke.mjs data/snapshots",
     "refs:verify": "node tools/references/verify.mjs data/matrix reference_map.csv",
     "db:build": "node tools/db/build.mjs data/matrix tools/db/migrations data/crew-health.db",
-    "ingest:space-weather": "node tools/ingest/space-weather.mjs data/snapshots"
+    "ingest:space-weather": "node tools/ingest/space-weather.mjs data/snapshots",
+    "ingest:mmash": "node tools/ingest/mmash.mjs data/raw/mmash/extract/DataPaper data/snapshots/mmash/derived.json",
+    "validate:calibrate": "node tools/validate/calibrate-drift.mjs data/validation/drift-calibration.json",
+    "validate:injection": "node tools/validate/inject-anomalies.mjs data/validation/drift-calibration.json data/validation/anomaly-injection.json",
+    "validate:mmash": "node tools/validate/mmash.mjs data/snapshots/mmash/derived.json data/validation/drift-calibration.json data/validation/mmash-validation.json",
+    "validate": "npm run validate:calibrate && npm run validate:injection && npm run validate:mmash"
   },
   "dependencies": {
     "three": "^0.187.0",
