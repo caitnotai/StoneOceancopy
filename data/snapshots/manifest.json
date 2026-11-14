@@ -31,9 +31,9 @@
     "source": "swpc",
     "url": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-7-day.json",
     "method": "GET",
-    "fetchedAt": "2026-11-14T18:15:27.897Z",
-    "bytes": 1698925,
-    "sha256": "6af7b074879e35e899a77463fc6da32325f4e3cee592c8f0944cea0c81d07943"
+    "fetchedAt": "2026-11-14T18:48:58.574Z",
+    "bytes": 1698928,
+    "sha256": "82f943479d3f81ff79b808bedceb712c059c3670be8f1e898217823792823ea9"
   },
   {
     "file": "swpc/differential-protons-1-day.json",
@@ -160,5 +160,14 @@
     "fetchedAt": "2026-11-14T18:15:46.085Z",
     "bytes": 20037,
     "sha256": "105a9b4101d4bd8a1696e254f0a9b48c75b9a5caa94a7fc0d141894f6f7a36aa"
+  },
+  {
+    "file": "donki/sep-events.json",
+    "source": "donki",
+    "url": "https://api.nasa.gov/DONKI/SEP?startDate=2024-05-01&endDate=2024-06-30&api_key=***",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:30.610Z",
+    "bytes": 16090,
+    "sha256": "8bdbcfa66a3fc5757a8afd2e729107a2dd2e0a95d86c7f04ad6e98c1bdccd5f8"
   }
 ]
