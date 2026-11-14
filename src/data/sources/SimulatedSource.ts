@@ -79,6 +79,8 @@ export class SimulatedSource implements SensorSource {
   private scenarioStartedAt: MissionMinutes = 0;
   /** Indicators for which a countermeasure has been carried out during this scenario. */
   private readonly countered = new Set<IndicatorId>();
+  /** Quiet-sun proton flux taken from the real GOES feed, when available. */
+  private quietFlux: number | null = null;
 
   constructor(
     private readonly clock: MissionClock,
@@ -103,6 +105,15 @@ export class SimulatedSource implements SensorSource {
    * indicator, so it recovers at its own pace and the Verify step has a response to
    * measure. Sheltering does not lower the proton flux; it halves the event dose instead.
    */
+  /**
+   * Anchors the simulated proton flux to the real quiet level measured by GOES, so the
+   * mission starts from today's actual space weather. Ignored during a real storm: the
+   * simulator's own solar event is the only source of an elevated flux.
+   */
+  setQuietFlux(pfu: number | null): void {
+    this.quietFlux = pfu !== null && pfu > 0 && pfu < 10 ? pfu : null;
+  }
+
   applyCountermeasure(id: IndicatorId): void {
     this.countered.add(id);
   }
@@ -181,7 +192,8 @@ export class SimulatedSource implements SensorSource {
     // A solar event ends: after the burst, the flux relaxes back to the quiet level.
     const burst = this.scenario.radiationBurst;
     if (id === 'protonFlux' && burst && t > this.scenarioStartedAt + burst.hours * 60) effect = undefined;
-    const target = effect?.target ?? spec.baseline;
+    const baseline = id === 'protonFlux' && this.quietFlux !== null ? this.quietFlux : spec.baseline;
+    const target = effect?.target ?? baseline;
     const tau = (effect?.tauHours ?? spec.tauHours) * 60;
     state.level += (target - state.level) * (1 - Math.exp(-(t - state.updatedAt) / tau));
     state.updatedAt = t;

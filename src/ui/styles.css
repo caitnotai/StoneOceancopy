@@ -1133,3 +1133,38 @@ details p {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* ---------- Space weather ---------- */
+.space-weather-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.space-weather-head h3 {
+  margin: 0;
+}
+
+.space-weather-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-left: 3px solid var(--status, var(--unknown));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--status, var(--unknown)) 10%, transparent);
+}
+
+.space-weather dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 14px;
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.space-weather dt {
+  color: var(--muted);
+}

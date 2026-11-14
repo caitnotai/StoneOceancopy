@@ -15,6 +15,7 @@ import type {
   SystemId,
 } from '../domain/types';
 import { Emitter } from './Emitter';
+import type { SpaceWeather } from './spaceWeather';
 
 const MAX_READINGS_PER_INDICATOR = 1200;
 
@@ -28,6 +29,8 @@ export interface StoreEvents extends Record<string, unknown> {
   /** An intervention was started or its verification changed. */
   interventions: readonly Intervention[];
   medicalPlan: MedicalPlan;
+  /** Real space weather was loaded or refreshed. */
+  spaceWeather: SpaceWeather;
 }
 
 /** Anything that produces readings writes them here. */
@@ -52,6 +55,7 @@ export class HealthStore implements ReadingSink {
   private current: Evaluation;
   private readonly interventionLog: Intervention[] = [];
   private plan: MedicalPlan = { ...DEFAULT_MEDICAL_PLAN };
+  private weather: SpaceWeather | null = null;
 
   constructor(environment: EnvironmentId = 'iss') {
     this.env = ENVIRONMENTS[environment];
@@ -85,6 +89,10 @@ export class HealthStore implements ReadingSink {
   }
   get medicalPlan(): MedicalPlan {
     return this.plan;
+  }
+  /** Real space weather (NOAA SWPC, NASA DONKI); null until it has been loaded. */
+  get spaceWeather(): SpaceWeather | null {
+    return this.weather;
   }
   /** The most recent intervention for an indicator, if any. */
   latestIntervention(id: IndicatorId): Intervention | undefined {
@@ -156,6 +164,11 @@ export class HealthStore implements ReadingSink {
     this.interventionLog.push(intervention);
     this.events.emit('interventions', this.interventionLog);
     return intervention;
+  }
+
+  setSpaceWeather(weather: SpaceWeather): void {
+    this.weather = weather;
+    this.events.emit('spaceWeather', weather);
   }
 
   setDrugsPreauthorized(drugsPreauthorized: boolean): void {

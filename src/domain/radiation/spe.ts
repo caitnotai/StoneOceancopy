@@ -1,4 +1,8 @@
-import type { Reading } from '../types';
+/** A flux measurement: `t` in any consistent time unit, `value` in pfu. */
+export interface FluxPoint {
+  t: number;
+  value: number;
+}
 
 /**
  * NOAA Space Weather Scale for solar radiation storms: level S1 to S5 by the flux of
@@ -30,7 +34,7 @@ export interface SpeState {
  * reading above threshold can be a glitch, so the event needs `sustain` consecutive
  * readings at S1 or above; the level reported is the highest reached since it started.
  */
-export function detectSpe(readings: readonly Reading[], sustain = 3): SpeState {
+export function detectSpe(readings: readonly FluxPoint[], sustain = 3): SpeState {
   let run = 0;
   let startedAt: number | null = null;
   let peak = 0;

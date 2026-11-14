@@ -19,6 +19,7 @@ const OUTCOME_VIEW = {
   not_verified: { glyph: '◆', label: 'Not verified', status: 'critical' },
 } as const;
 import { IndicatorCard } from './IndicatorCard';
+import { SpaceWeatherCard } from './SpaceWeatherCard';
 
 const TRIAGE_ICON: Record<string, string> = {
   nominal: '●',
@@ -47,6 +48,8 @@ export class SidePanel {
     store.events.on('data', (evaluation) => this.update(evaluation));
     store.events.on('interventions', () => this.update(store.evaluation));
     store.events.on('medicalPlan', () => this.update(store.evaluation));
+    // The live feed answers once, shortly after start: rebuild the view to show it.
+    store.events.on('spaceWeather', () => this.show(store.selected));
     this.show(store.selected);
   }
 
@@ -90,6 +93,7 @@ class Overview {
     parent.append(
       h('section', null, h('h3', null, 'Needs attention'), this.attention, this.attentionEmpty),
       this.treatmentsSection,
+      ...(store.spaceWeather ? [new SpaceWeatherCard(store.spaceWeather).element] : []),
       h('section', null, h('h3', null, 'Self-checks due'), this.due, this.dueEmpty),
       h(
         'section',
@@ -279,6 +283,7 @@ class SystemDetail {
           'critical',
         ),
       ),
+      ...(id === 'radiation' && store.spaceWeather ? [new SpaceWeatherCard(store.spaceWeather).element] : []),
       ...cards,
     );
   }

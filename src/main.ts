@@ -4,6 +4,7 @@ import { HealthStore } from './data/HealthStore';
 import { MissionClock } from './data/MissionClock';
 import { scenarioById } from './data/sources/scenarios';
 import { SimulatedSource } from './data/sources/SimulatedSource';
+import { loadSpaceWeather, snapshotSpaceWeather } from './data/spaceWeather';
 import { STATUS_GLYPH, STATUS_LABEL } from './domain/status';
 import type { HealthStatus } from './domain/types';
 import { BodyViewport } from './scene/BodyViewport';
@@ -31,6 +32,17 @@ function bootstrap(): void {
   const clock = new MissionClock(MISSION_START_MINUTES);
   const simulator = new SimulatedSource(clock, () => store.environment);
   simulator.connect(store);
+
+  // Real space weather: the bundled snapshot first (works offline), then the live feed.
+  const offline = snapshotSpaceWeather();
+  store.setSpaceWeather(offline);
+  simulator.setQuietFlux(offline.now.latest?.value ?? null);
+  void loadSpaceWeather().then((weather) => {
+    if (weather.origin !== 'live') return;
+    store.setSpaceWeather(weather);
+    simulator.setQuietFlux(weather.now.latest?.value ?? null);
+  });
+
   simulator.seedHistory(HISTORY_DAYS);
 
   const simulatorState: SimulatorState = { scenarioId: 'nominal', speed: clock.speed, autoLog: true };
