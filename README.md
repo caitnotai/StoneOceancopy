@@ -1,9 +1,7 @@
-# HELIOS (Health Evaluation and Life Indicators Observation System)
-
+# HELIOS (Health Evaluation and Life Indicators Observation System) 
 A 3D health twin for astronauts. Instead of treating the body as a picture, the app treats it as
 a **data structure**: every body system (skeletal, cardiovascular, muscular...) is an object with
 live health indicators, and its status drives its color on an interactive 3D body.
-
 Built for the NASA Space Apps Challenge 2026, challenge
 *Create Health Monitoring Software for Astronauts on Space Missions*.
 
