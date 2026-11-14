@@ -1,0 +1,54 @@
+{
+  "seed": 20261114,
+  "runs": 6000,
+  "model": "independent standard-normal readings",
+  "ewma": {
+    "lambda": 0.2
+  },
+  "cusum": {
+    "k": 0.5
+  },
+  "levels": {
+    "caution": {
+      "targetArl0": 100,
+      "meaning": "about one false alarm per 100 readings at baseline",
+      "ewmaLimit": 2.377,
+      "ewmaArl0": 100,
+      "cusumH": 3.516,
+      "cusumArl0": 100.1,
+      "jointArl0": 77.8
+    },
+    "critical": {
+      "targetArl0": 1000,
+      "meaning": "about one false alarm per 1,000 readings at baseline",
+      "ewmaLimit": 3.185,
+      "ewmaArl0": 998.5,
+      "cusumH": 5.742,
+      "cusumArl0": 998.1,
+      "jointArl0": 718
+    }
+  },
+  "operational": {
+    "baselineReadings": 14,
+    "horizonReadings": 30,
+    "runs": 30000,
+    "levels": {
+      "caution": {
+        "targetFalseAlarm": 0.05,
+        "ewmaLimit": 4.596,
+        "ewmaFalseAlarm": 0.025,
+        "cusumH": 12.15,
+        "cusumFalseAlarm": 0.0251,
+        "jointFalseAlarm": 0.034
+      },
+      "critical": {
+        "targetFalseAlarm": 0.005,
+        "ewmaLimit": 6.179,
+        "ewmaFalseAlarm": 0.0025,
+        "cusumH": 21.824,
+        "cusumFalseAlarm": 0.0025,
+        "jointFalseAlarm": 0.0037
+      }
+    }
+  }
+}
