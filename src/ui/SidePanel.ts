@@ -2,11 +2,22 @@ import type { AppActions } from '../app/actions';
 import type { HealthStore } from '../data/HealthStore';
 import { formatDelay } from '../domain/catalog/environments';
 import { HAZARDS } from '../domain/catalog/systems';
+import { INDICATORS } from '../domain/catalog/indicators';
 import { thresholdsFor } from '../domain/engine/evaluate';
+import type { Intervention } from '../domain/engine/verify';
+import { provenanceOf } from '../domain/evidence/indicatorRules';
+import { PROVENANCE_LABEL } from '../domain/evidence/types';
+import { offerSteps } from '../domain/medicalPlan';
 import { severity, STATUS_GLYPH } from '../domain/status';
 import type { Evaluation, IndicatorEvaluation, SystemEvaluation, SystemId } from '../domain/types';
 import { h, setText, syncList } from './dom';
-import { formatValue, statusBadge, updateBadge } from './format';
+import { formatValue, formatWhen, statusBadge, updateBadge } from './format';
+
+const OUTCOME_VIEW = {
+  pending: { glyph: '○', label: 'Waiting for a measured response', status: 'unknown' },
+  verified: { glyph: '●', label: 'Verified', status: 'nominal' },
+  not_verified: { glyph: '◆', label: 'Not verified', status: 'critical' },
+} as const;
 import { IndicatorCard } from './IndicatorCard';
 
 const TRIAGE_ICON: Record<string, string> = {
@@ -34,6 +45,8 @@ export class SidePanel {
     parent.append(this.triage, this.body);
     store.events.on('selection', (id) => this.show(id));
     store.events.on('data', (evaluation) => this.update(evaluation));
+    store.events.on('interventions', () => this.update(store.evaluation));
+    store.events.on('medicalPlan', () => this.update(store.evaluation));
     this.show(store.selected);
   }
 
@@ -41,7 +54,7 @@ export class SidePanel {
     this.view?.dispose();
     this.body.replaceChildren();
     this.body.scrollTop = 0;
-    this.view = id ? new SystemDetail(this.body, id, this.store, this.actions) : new Overview(this.body, this.store);
+    this.view = id ? new SystemDetail(this.body, id, this.store, this.actions) : new Overview(this.body, this.store, this.actions);
     this.update(this.store.evaluation);
   }
 
@@ -64,11 +77,27 @@ class Overview {
   private readonly due = h('div', { class: 'row-list' });
   private readonly dueEmpty = h('p', { class: 'empty' }, 'All scheduled self-checks are up to date.');
   private readonly environment = h('div', { class: 'facts' });
+  private readonly treatments = h('div', { class: 'row-list' });
+  private readonly treatmentsSection = h('section', { hidden: true }, h('h3', null, 'Treatments and their verification'), this.treatments);
+  private readonly drugsToggle: HTMLInputElement;
 
-  constructor(parent: HTMLElement, private readonly store: HealthStore) {
+  constructor(parent: HTMLElement, private readonly store: HealthStore, actions: AppActions) {
+    this.drugsToggle = h('input', {
+      type: 'checkbox',
+      id: 'drugs-preauthorized',
+      onchange: () => actions.setDrugsPreauthorized(this.drugsToggle.checked),
+    });
     parent.append(
       h('section', null, h('h3', null, 'Needs attention'), this.attention, this.attentionEmpty),
+      this.treatmentsSection,
       h('section', null, h('h3', null, 'Self-checks due'), this.due, this.dueEmpty),
+      h(
+        'section',
+        null,
+        h('h3', null, 'Mission medical plan'),
+        h('label', { class: 'check', for: 'drugs-preauthorized' }, this.drugsToggle, 'Drugs are pre-authorized in the medical plan'),
+        h('p', { class: 'reference' }, 'Off by default. While it is off, every medication step is withheld: this tool supports decisions, it does not prescribe.'),
+      ),
       h('section', null, h('h3', null, 'Mission environment'), this.environment),
       h(
         'section',
@@ -77,7 +106,7 @@ class Overview {
         h(
           'p',
           null,
-          'All readings come from a built-in simulator. Reference ranges are illustrative and would be set by flight surgeons for a real mission. This is a concept for crew decision support, not a medical device.',
+          'All readings come from a built-in simulator. Only two thresholds are NASA limits: cabin CO₂ (NASA-STD-3001) and retinal thickness (SANS clinical criteria). Every other range is illustrative and labeled as such. This is a concept for crew decision support, not a medical device.',
         ),
         h(
           'p',
@@ -110,7 +139,14 @@ class Overview {
           'button',
           { class: 'row', type: 'button', onclick: () => store.select(s.def.id) },
           h('span', { class: 'status-glyph', 'aria-hidden': 'true' }),
-          h('span', { class: 'row-text' }, h('strong', null, s.def.name), h('span', { class: 'row-sub' }), h('span', { class: 'row-action' })),
+          h(
+            'span',
+            { class: 'row-text' },
+            h('strong', null, s.def.name),
+            h('span', { class: 'row-sub' }),
+            h('span', { class: 'row-action' }),
+            h('span', { class: 'row-provenance' }),
+          ),
         ),
       (el, s) => {
         el.dataset.status = s.status;
@@ -121,7 +157,40 @@ class Overview {
           driver?.latest ? `${driver.def.name}: ${formatValue(driver.latest.value, driver.def)} ${driver.def.unit}` : '',
         );
         const steps = s.status === 'critical' ? driver?.def.guidance.critical : driver?.def.guidance.caution;
-        setText(el.querySelector('.row-action')!, steps?.[0] ? `First step: ${steps[0]}` : '');
+        const first = steps ? offerSteps(steps, store.medicalPlan).find((step) => !step.withheld) : undefined;
+        setText(el.querySelector('.row-action')!, first ? `First step: ${first.text}` : '');
+        // No alert without its provenance: basis of the threshold and class of evidence.
+        const provenance = driver ? provenanceOf(driver.def.id) : undefined;
+        setText(
+          el.querySelector('.row-provenance')!,
+          provenance ? `${provenance.basisLabel} · ${PROVENANCE_LABEL[provenance.evidence.provenanceClass]}` : '',
+        );
+      },
+    );
+
+    this.drugsToggle.checked = store.medicalPlan.drugsPreauthorized;
+    const recent = store.interventions.slice(-4).reverse();
+    this.treatmentsSection.hidden = recent.length === 0;
+    syncList<Intervention>(
+      this.treatments,
+      recent,
+      (i) => String(i.id),
+      (i) =>
+        h(
+          'button',
+          { class: 'row', type: 'button', onclick: () => store.select(INDICATORS[i.indicatorId].systemId) },
+          h('span', { class: 'status-glyph', 'aria-hidden': 'true' }),
+          h('span', { class: 'row-text' }, h('strong', null, i.stepText), h('span', { class: 'row-sub' }), h('span', { class: 'row-action' })),
+        ),
+      (el, i) => {
+        const def = INDICATORS[i.indicatorId];
+        const view = OUTCOME_VIEW[i.outcome];
+        el.dataset.status = view.status;
+        setText(el.querySelector('.status-glyph')!, view.glyph);
+        const before = i.valueBefore === null ? 'no value' : `${formatValue(i.valueBefore, def)} ${def.unit}`;
+        const after = i.valueAfter === null ? '' : `, now ${formatValue(i.valueAfter, def)} ${def.unit}`;
+        setText(el.querySelector('.row-sub')!, `${view.label} · ${def.name}: ${before} before${after}`);
+        setText(el.querySelector('.row-action')!, `Authority level ${i.authorityLevel} · done at ${formatWhen(i.startedAt)}`);
       },
     );
 
@@ -156,7 +225,7 @@ class Overview {
           h('dt', null, 'Radiation'),
           h('dd', null, `${env.radiationMSvPerDay} mSv/day`),
         ),
-        h('p', { class: 'reference' }, env.radiationReference),
+        h('p', { class: 'reference' }, `${env.radiationReference} Observed environment, not an alert threshold.`),
       );
     }
   }
@@ -220,7 +289,10 @@ class SystemDetail {
     for (const indicator of system.indicators) {
       this.cards
         .get(indicator.def.id)
-        ?.update(indicator, this.store.history(indicator.def.id), thresholdsFor(indicator.def, this.store.environment), evaluation.missionTime);
+        ?.update(indicator, this.store.history(indicator.def.id), thresholdsFor(indicator.def, this.store.environment), evaluation.missionTime, {
+          plan: this.store.medicalPlan,
+          intervention: this.store.latestIntervention(indicator.def.id),
+        });
     }
   }
 
