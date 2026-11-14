@@ -16,6 +16,7 @@ import {
   type SystemId,
   type Thresholds,
 } from '../types';
+import { monitor, usesIndividualBaseline, type IndividualBaseline } from './monitor';
 import { triage } from './triage';
 
 const MINUTES_PER_DAY = 1440;
@@ -61,17 +62,37 @@ export function trendPerDay(readings: Reading[], now: MissionMinutes, windowDays
   return (n * sxy - sx * sy) / denom;
 }
 
+/** What the engine needs to judge an indicator against the person's own baseline. */
+export interface MonitoringContext {
+  baseline: IndividualBaseline;
+  /** Time of the last treatment for this indicator: the detectors restart there. */
+  resetAt?: MissionMinutes | null;
+}
+
+/** Share of the caution limit at which a drift that has not signaled yet is called "worsening". */
+const EARLY_WARNING = 0.6;
+
 export function evaluateIndicator(
   def: IndicatorDef,
   readings: Reading[],
   env: EnvironmentDef,
   now: MissionMinutes,
+  monitoring?: MonitoringContext,
 ): IndicatorEvaluation {
   const latest = readings.length > 0 ? readings[readings.length - 1] : null;
-  const th = thresholdsFor(def, env);
-  const status = latest ? classify(latest.value, th) : 'unknown';
   const due = !latest || now - latest.t > def.cadenceHours * 60;
   const slope = trendPerDay(readings, now);
+
+  // Individual baseline: the status comes from the drift detectors, not from a fixed range.
+  if (latest && monitoring && usesIndividualBaseline(def.id)) {
+    const drift = monitor(def, readings, monitoring.baseline, now, monitoring.resetAt ?? null);
+    const adverse = drift.direction === 'low' ? -drift.ewma : drift.direction === 'high' ? drift.ewma : Math.abs(drift.ewma);
+    const worsening = drift.status === 'nominal' && adverse > EARLY_WARNING * drift.ewmaCautionLimit;
+    return { def, latest, status: drift.status, due, trendPerDay: slope, worsening, drift };
+  }
+
+  const th = thresholdsFor(def, env);
+  const status = latest ? classify(latest.value, th) : 'unknown';
   let worsening = false;
   if (latest && slope !== null) {
     const projected = classify(latest.value + slope * LOOKAHEAD_DAYS, th);
@@ -85,9 +106,10 @@ export function evaluateSystem(
   readings: ReadonlyMap<IndicatorId, Reading[]>,
   env: EnvironmentDef,
   now: MissionMinutes,
+  monitoring?: ReadonlyMap<IndicatorId, MonitoringContext>,
 ): SystemEvaluation {
   const indicators = indicatorsOf(systemId).map((def) =>
-    evaluateIndicator(def, readings.get(def.id) ?? [], env, now),
+    evaluateIndicator(def, readings.get(def.id) ?? [], env, now, monitoring?.get(def.id)),
   );
   const status = worstOf(indicators.map((i) => i.status));
   const driver =
@@ -103,9 +125,10 @@ export function evaluateAll(
   readings: ReadonlyMap<IndicatorId, Reading[]>,
   env: EnvironmentDef,
   now: MissionMinutes,
+  monitoring?: ReadonlyMap<IndicatorId, MonitoringContext>,
 ): Evaluation {
   const systems = {} as Record<SystemId, SystemEvaluation>;
-  for (const id of SYSTEM_IDS) systems[id] = evaluateSystem(id, readings, env, now);
+  for (const id of SYSTEM_IDS) systems[id] = evaluateSystem(id, readings, env, now, monitoring);
   const due = Object.values(systems)
     .flatMap((s) => s.indicators)
     .filter((i) => i.due && i.def.acquisition === 'self-check');

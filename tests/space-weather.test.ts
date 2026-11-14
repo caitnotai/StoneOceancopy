@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import rawGoesJson from '../data/snapshots/swpc/integral-protons-7-day.json';
+import { HISTORY_DAYS } from '../src/config';
 import { HealthStore } from '../src/data/HealthStore';
 import { MissionClock } from '../src/data/MissionClock';
 import { SimulatedSource } from '../src/data/sources/SimulatedSource';
@@ -92,7 +93,7 @@ describe('simulator anchored to real space weather', () => {
     const simulator = new SimulatedSource(clock, () => store.environment);
     simulator.connect(store);
     simulator.setQuietFlux(0.9);
-    simulator.seedHistory(14);
+    simulator.seedHistory(HISTORY_DAYS);
     const recent = store.history('protonFlux').slice(-48).map((r) => r.value);
     const mean = recent.reduce((a, b) => a + b, 0) / recent.length;
     expect(mean).toBeGreaterThan(0.8);
@@ -106,7 +107,7 @@ describe('simulator anchored to real space weather', () => {
     const simulator = new SimulatedSource(clock, () => store.environment);
     simulator.connect(store);
     simulator.setQuietFlux(450);
-    simulator.seedHistory(14);
+    simulator.seedHistory(HISTORY_DAYS);
     expect(Math.max(...store.history('protonFlux').map((r) => r.value))).toBeLessThan(10);
   });
 });

@@ -2,6 +2,9 @@
 export const APP_TITLE = 'Crew Health Twin';
 export const APP_SUBTITLE = 'Astronaut self-assessment console';
 
-/** The demo opens on mission day 45 at 08:00, with two weeks of history already recorded. */
+/**
+ * The demo opens on mission day 45 at 08:00 with 15 days already recorded: 14 complete days
+ * for the individual baselines, plus the day that is starting.
+ */
 export const MISSION_START_MINUTES = 44 * 1440 + 8 * 60;
-export const HISTORY_DAYS = 14;
+export const HISTORY_DAYS = 15;

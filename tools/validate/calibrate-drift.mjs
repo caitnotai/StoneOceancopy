@@ -80,17 +80,31 @@ for (const target of TARGETS) {
 const BASELINE_READINGS = 14;
 const HORIZON = 30;
 const OPERATIONAL_RUNS = 30000;
+// The single-value rule aims at much rarer events, so it needs more runs for a stable limit.
+const SINGLE_VALUE_RUNS = 300000;
+/** Share of a level's target given to the single-value rule, on top of the two drift detectors. */
+const SINGLE_VALUE_SHARE = 0.2;
 
-function falseAlarmProbability(detect) {
+/** First reading further than `limit` predictive SDs from the baseline: the Shewhart rule. */
+const singleValue = (limit) => (z) => {
+  const index = z.findIndex((value) => Math.abs(value) > limit);
+  return index < 0 ? null : index;
+};
+const first = (...signals) => {
+  const found = signals.filter((s) => s !== null);
+  return found.length > 0 ? Math.min(...found) : null;
+};
+
+function falseAlarmProbability(detect, runs = OPERATIONAL_RUNS) {
   const random = generator(SEED + 7);
   let alarms = 0;
-  for (let run = 0; run < OPERATIONAL_RUNS; run++) {
+  for (let run = 0; run < runs; run++) {
     const own = Array.from({ length: BASELINE_READINGS }, () => random.gaussian());
     const baseline = fitBaseline(own);
     const z = Array.from({ length: HORIZON }, () => standardize(random.gaussian(), baseline));
     if (detect(z) !== null) alarms += 1;
   }
-  return alarms / OPERATIONAL_RUNS;
+  return alarms / runs;
 }
 
 /** Finds the parameter that gives the target false-alarm probability; it falls as the parameter grows. */
@@ -104,23 +118,36 @@ function solveProbability(target, low, high, probabilityOf) {
   return { value, probability: round(probabilityOf(value), 4) };
 }
 
-result.operational = { baselineReadings: BASELINE_READINGS, horizonReadings: HORIZON, runs: OPERATIONAL_RUNS, levels: {} };
+result.operational = { baselineReadings: BASELINE_READINGS, horizonReadings: HORIZON, runs: OPERATIONAL_RUNS, singleValueRuns: SINGLE_VALUE_RUNS, singleValueShare: SINGLE_VALUE_SHARE, levels: {} };
 console.log(`\nOperational calibration: baseline estimated from ${BASELINE_READINGS} readings, probability of a false alarm within ${HORIZON} readings`);
 for (const target of [
   { name: 'caution', probability: 0.05 },
   { name: 'critical', probability: 0.005 },
 ]) {
-  // Each detector gets half of the budget, so that used together they stay near the target.
+  // Each drift detector gets half of the budget, so that used together they stay near the target.
   const each = target.probability / 2;
   const e = solveProbability(each, 1.5, 8, (limit) => falseAlarmProbability((z) => ewma(z, { lambda: LAMBDA, limit }).signalIndex));
   const c = solveProbability(each, 2, 80, (h) => falseAlarmProbability((z) => cusum(z, { k: K, h }).signalIndex));
-  const joint = falseAlarmProbability((z) => {
-    const a = ewma(z, { lambda: LAMBDA, limit: e.value }).signalIndex;
-    const b = cusum(z, { k: K, h: c.value }).signalIndex;
-    return a === null ? b : b === null ? a : Math.min(a, b);
-  });
-  result.operational.levels[target.name] = { targetFalseAlarm: target.probability, ewmaLimit: e.value, ewmaFalseAlarm: e.probability, cusumH: c.value, cusumFalseAlarm: c.probability, jointFalseAlarm: round(joint, 4) };
-  console.log(`${target.name.padEnd(9)} target ${target.probability} | EWMA L = ${e.value} (${e.probability}) | CUSUM h = ${c.value} (${c.probability}) | either: ${round(joint, 4)}`);
+  const drift = (z) => first(ewma(z, { lambda: LAMBDA, limit: e.value }).signalIndex, cusum(z, { k: K, h: c.value }).signalIndex);
+  const driftJoint = falseAlarmProbability(drift);
+  // EWMA and CUSUM are slow to react to one extreme value (a single reading must be about
+  // 7.7 SD out to move a settled EWMA past its caution limit). The usual remedy is to add a
+  // limit on the value itself. It gets a small share of the target, so most false alarms it
+  // would raise are ones the EWMA raises anyway.
+  const s = solveProbability(target.probability * SINGLE_VALUE_SHARE, 2, 15, (limit) => falseAlarmProbability(singleValue(limit), SINGLE_VALUE_RUNS));
+  const joint = falseAlarmProbability((z) => first(drift(z), singleValue(s.value)(z)), SINGLE_VALUE_RUNS);
+  result.operational.levels[target.name] = {
+    targetFalseAlarm: target.probability,
+    ewmaLimit: e.value,
+    ewmaFalseAlarm: e.probability,
+    cusumH: c.value,
+    cusumFalseAlarm: c.probability,
+    driftJointFalseAlarm: round(driftJoint, 4),
+    singleValueLimit: s.value,
+    singleValueFalseAlarm: s.probability,
+    jointFalseAlarm: round(joint, 4),
+  };
+  console.log(`${target.name.padEnd(9)} target ${target.probability} | EWMA L = ${e.value} (${e.probability}) | CUSUM h = ${c.value} (${c.probability}) | either drift detector: ${round(driftJoint, 4)} | single value > ${s.value} SD (${s.probability}) | any of the three: ${round(joint, 4)}`);
 }
 
 writeFileSync(outFile, JSON.stringify(result, null, 2) + '\n');

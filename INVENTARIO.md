@@ -300,7 +300,7 @@ Pruebas: 85 de 85.
 | Inyección de anomalías y análisis de sensibilidad | `tools/validate/inject-anomalies.mjs` | hecho |
 | Ingesta de MMASH y validación con datos reales | `tools/ingest/mmash.mjs`, `tools/validate/mmash.mjs` | hecho |
 | `METHODS.md` con supuestos, fórmulas, resultados y limitaciones | raíz | hecho |
-| Clasificar los 11 indicadores por baseline individual dentro de la app | – | **pendiente (bloque 4b)** |
+| Clasificar los 11 indicadores por baseline individual dentro de la app | `src/domain/engine/monitor.ts` | hecho en el bloque 4b |
 | Cambios antes y después de I4 con intervalos creíbles | – | pendiente (bloque 5) |
 
 Hallazgos que cambian el diseño:
@@ -325,3 +325,107 @@ publicada. Está en `data/raw/`, fuera de git. El archivo derivado que sí se pu
 queda bajo la misma licencia ODbL, con atribución.
 
 Pruebas: 101 de 101.
+
+### Bloque 6: API y demo offline (14-nov-2026)
+
+Se adelantó al bloque 4b porque no depende de la decisión pendiente sobre el punto de
+operación de los detectores.
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| API con `/rules`, `/evidence`, `/state/{crew_id}`, `/radiation/now`, `/alerts` y `/verify` | `src/api/handlers.ts`, `src/api/runtime.ts`, `server/index.mjs`; `npm run api` | hecho |
+| La API usa el mismo motor de reglas que el tablero (se carga con Vite, no hay segunda implementación) | `server/index.mjs` | hecho |
+| Alertas, intervenciones y verificaciones se guardan en SQLite | `server/index.mjs` | hecho |
+| Script de demo offline | `tools/demo-offline.mjs`; `npm run demo:offline`, `npm run demo:check` | hecho |
+
+Endpoints adicionales que hicieron falta: `POST /measurements` (lectura manual),
+`POST /simulate` (avanzar la misión o cambiar de escenario) y `PUT /medical-plan` (flag de
+fármacos). `POST /verify` rechaza con 403 cualquier paso con fármacos mientras el plan médico
+no los preautorice, aunque se declare con otro nivel de autoridad.
+
+Qué comprueba `npm run demo:check`: que los 19 snapshots están en disco y coinciden con su
+SHA-256; que los datos que la app incluye existen; que la base se construye desde la matriz;
+que el sitio compila; que el único archivo del código que abre una conexión es
+`src/data/spaceWeather.ts`, hacia SWPC y con caída al snapshot; y que, con la red bloqueada,
+el motor y la API responden.
+
+Límite de esa comprobación: bloquea la red dentro del proceso de Node. No se probó el tablero
+en un navegador con el equipo desconectado.
+
+La API es para uso local: no tiene autenticación y sigue a un solo tripulante (`crew-1`).
+
+Pruebas: 115 de 115.
+
+### Bloque 4b: baseline individual dentro de la app (14-nov-2026)
+
+Punto de operación confirmado por el usuario: los límites recalibrados del bloque 4a.
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| Monitoreo contra el baseline: valor por día de tripulación, baseline de 14 días que se ajusta una vez y queda congelado, EWMA, CUSUM y regla de valor único | `src/domain/engine/monitor.ts` (nuevo) | hecho |
+| El motor usa el baseline cuando existe y el rango ilustrativo mientras no (parámetro opcional: las firmas anteriores siguen sirviendo) | `src/domain/engine/evaluate.ts`, `src/data/HealthStore.ts` | hecho |
+| Verificar contra el baseline: se cierra cuando el valor vuelve al rango habitual de la persona (95 %), con ventana de 3 días | `src/domain/engine/verify.ts` | hecho |
+| Etiqueta dinámica "Individual baseline · not a NASA limit" en tarjeta, resumen y API | `indicatorRules.ts`, `IndicatorCard.ts`, `SidePanel.ts`, `handlers.ts` | hecho |
+| Tarjeta: baseline (media ± DE), valor actual en DE, las tres reglas con sus límites y cuál disparó; el gráfico usa las bandas del baseline | `src/ui/IndicatorCard.ts`, `src/ui/TrendChart.ts` | hecho |
+| API: campo `baseline` en `/state/{crew_id}` y `/alerts` | `src/api/handlers.ts` | hecho |
+| Regla de valor único calibrada con el mismo script y medida en la inyección de anomalías | `tools/validate/calibrate-drift.mjs`, `tools/validate/inject-anomalies.mjs` | hecho |
+
+**C1 queda resuelto** para los 11 indicadores que ahora se juzgan contra el baseline. Eran
+12 los que usaban rango terrestre, no 11 como decía el bloque 2: el puntaje de visión
+(`visionChange`) sigue con su rango ilustrativo etiquetado, porque se mide cada 3 días y no
+junta 14 valores. También se usa el rango ilustrativo mientras una persona no tenga 14 días
+completos registrados.
+
+Decisiones tomadas durante el bloque que conviene que revises:
+
+1. **Añadí una tercera regla (valor único) que no estaba en lo aprobado.** Con solo EWMA y
+   CUSUM, un valor extremo aislado podía quedar en "nominal": un salto de 6 desviaciones
+   estándar el día 20 se marcaba ese mismo día solo el 26 % de las veces. Con la regla, el
+   81 %. Los límites EWMA y CUSUM que aprobaste no cambiaron. El costo: la probabilidad de
+   falsa alarma por indicador en 30 días pasa de 3,4 % a **3,8 %** (crítico: de 0,37 % a
+   0,42 %), dentro del objetivo de 5 % y 0,5 %.
+2. **En los sensores se compara la media de las últimas 24 horas**, no lo que va del día.
+   La frecuencia cardiaca y la temperatura tienen ritmo día-noche, y media mañana parecía un
+   cambio de 1,5 desviaciones que no existe. Consecuencia: un cambio brusco tarda horas en
+   verse (la fiebre del escenario, 15 horas hasta precaución y 18 hasta crítico).
+3. **Tras marcar un tratamiento, los detectores se reinician** y el estado anterior se
+   mantiene hasta que haya un valor posterior (en sensores, 24 horas completas).
+4. **La demo arranca con 15 días de historia** en vez de 14 (`HISTORY_DAYS`): 14 días
+   completos para el baseline más el día que empieza.
+5. **El simulador tiene ahora variación de un día a otro** en los sensores y más ruido en las
+   medidas diarias. Sin eso, la media diaria salía irrealmente estable. Son parámetros
+   ilustrativos, no mediciones de ninguna tripulación.
+
+Tiempo hasta la primera alerta en los escenarios de la demo (semilla por defecto):
+
+| Escenario | Indicador | Precaución | Crítico |
+|---|---|---|---|
+| Falla del equipo de ejercicio | ejercicio aeróbico / resistivo | 2 días / 4 días | 3 días / 4 días |
+| Alteración del sueño | sueño | 3 días | 4 días |
+| Alteración del sueño | frecuencia cardiaca | 27 h | 35 h |
+| Reactivación viral | temperatura | 15 h | 18 h |
+| Reactivación viral | SpO₂ | 29 h | 41 h |
+| Signos de SANS | mareo | 1 día | 1 día |
+| Ingesta insuficiente | glucosa / calorías | 4 días / 5 días | 4 días / 7 días |
+
+Es más lento que con los rangos terrestres (el ejercicio antes pasaba a precaución en 2
+días). Es el precio, ya medido en el bloque 4a, de tener pocas falsas alarmas con un
+baseline de 14 días.
+
+Pruebas que cambiaron de significado, porque el estado ya no sale de una banda fija:
+
+- "starts with two weeks of history…": ahora espera 15 lecturas diarias y un baseline de 14 días.
+- "turns bone and muscle from nominal to critical when exercise stops": un día bajo sigue
+  nominal; a los 8 días es crítico (antes: precaución a los 2 días).
+- "continues from a manually logged value" y "accepts a manual measurement…" (API): un ánimo
+  de 3 ya no es crítico por definición; se marca como alejado del baseline, y un 1 es crítico.
+
+Pruebas nuevas: 26 (`tests/monitor.test.ts`, más casos en simulador, verificación y API),
+entre ellas 10 misiones sanas de 30 días para vigilar las falsas alarmas.
+
+Comprobado en el navegador: escenario de reactivación viral en la estación; la temperatura
+pasa a crítico con la etiqueta de baseline individual, se marca un paso, el estado se
+mantiene mientras se espera un valor y la intervención queda verificada 32 horas después.
+No comprobado en pantalla: los demás escenarios con el baseline y la vista en móvil.
+
+Pruebas: 141 de 141.

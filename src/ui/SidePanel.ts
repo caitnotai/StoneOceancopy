@@ -164,7 +164,7 @@ class Overview {
         const first = steps ? offerSteps(steps, store.medicalPlan).find((step) => !step.withheld) : undefined;
         setText(el.querySelector('.row-action')!, first ? `First step: ${first.text}` : '');
         // No alert without its provenance: basis of the threshold and class of evidence.
-        const provenance = driver ? provenanceOf(driver.def.id) : undefined;
+        const provenance = driver ? provenanceOf(driver.def.id, Boolean(driver.drift)) : undefined;
         setText(
           el.querySelector('.row-provenance')!,
           provenance ? `${provenance.basisLabel} · ${PROVENANCE_LABEL[provenance.evidence.provenanceClass]}` : '',

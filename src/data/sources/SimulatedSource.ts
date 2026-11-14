@@ -1,4 +1,5 @@
 import { INDICATORS } from '../../domain/catalog/indicators';
+import { MONITORING } from '../../domain/engine/monitor';
 import type { EnvironmentDef, IndicatorId, MissionMinutes, Reading } from '../../domain/types';
 import type { ReadingSink } from '../HealthStore';
 import { MINUTES_PER_DAY, type MissionClock } from '../MissionClock';
@@ -15,22 +16,31 @@ interface ChannelSpec {
   tauHours: number;
   /** Amplitude of the day-night rhythm, if any. */
   circadian?: number;
+  /**
+   * For sensors: standard deviation of the level from one day to the next. People are not
+   * the same every day, and without this the daily mean of a sensor would be unrealistically
+   * stable. For once-a-day measures, `noise` already plays this role.
+   */
+  daySd?: number;
 }
 
-/** A plausible healthy crew member. Radiation is handled separately: it is cumulative. */
+/**
+ * A plausible healthy crew member. Radiation is handled separately: it is cumulative.
+ * The spreads are illustrative simulator parameters, not measurements of any crew.
+ */
 const CHANNELS: Record<Exclude<IndicatorId, 'radiationDose'>, ChannelSpec> = {
-  heartRate: { baseline: 62, noise: 2.2, intervalMin: 30, tauHours: 8, circadian: 4 },
-  systolicBP: { baseline: 117, noise: 3, intervalMin: 1440, tauHours: 24 },
-  resistiveExercise: { baseline: 62, noise: 4, intervalMin: 1440, tauHours: 60 },
-  aerobicExercise: { baseline: 42, noise: 3, intervalMin: 1440, tauHours: 60 },
-  spo2: { baseline: 97.6, noise: 0.45, intervalMin: 30, tauHours: 6 },
-  sleepHours: { baseline: 7.7, noise: 0.22, intervalMin: 1440, tauHours: 30 },
-  mood: { baseline: 7.6, noise: 0.35, intervalMin: 1440, tauHours: 48 },
+  heartRate: { baseline: 62, noise: 2.2, intervalMin: 30, tauHours: 8, circadian: 4, daySd: 2 },
+  systolicBP: { baseline: 117, noise: 5, intervalMin: 1440, tauHours: 24 },
+  resistiveExercise: { baseline: 62, noise: 7, intervalMin: 1440, tauHours: 60 },
+  aerobicExercise: { baseline: 42, noise: 5, intervalMin: 1440, tauHours: 60 },
+  spo2: { baseline: 97.6, noise: 0.45, intervalMin: 30, tauHours: 6, daySd: 0.3 },
+  sleepHours: { baseline: 7.7, noise: 0.6, intervalMin: 1440, tauHours: 30 },
+  mood: { baseline: 7.6, noise: 0.7, intervalMin: 1440, tauHours: 48 },
   visionChange: { baseline: 0.7, noise: 0.25, intervalMin: 4320, tauHours: 96 },
-  dizziness: { baseline: 0.8, noise: 0.3, intervalMin: 1440, tauHours: 24 },
-  bodyTemp: { baseline: 36.8, noise: 0.07, intervalMin: 60, tauHours: 8, circadian: 0.18 },
-  glucose: { baseline: 94, noise: 4, intervalMin: 1440, tauHours: 24 },
-  calorieIntake: { baseline: 100, noise: 2.5, intervalMin: 1440, tauHours: 30 },
+  dizziness: { baseline: 0.8, noise: 0.35, intervalMin: 1440, tauHours: 24 },
+  bodyTemp: { baseline: 36.8, noise: 0.07, intervalMin: 60, tauHours: 8, circadian: 0.18, daySd: 0.1 },
+  glucose: { baseline: 94, noise: 6, intervalMin: 1440, tauHours: 24 },
+  calorieIntake: { baseline: 100, noise: 6, intervalMin: 1440, tauHours: 30 },
   ppCO2: { baseline: 2.1, noise: 0.12, intervalMin: 60, tauHours: 5 },
   retinalThickness: { baseline: 6, noise: 2, intervalMin: 4320, tauHours: 96 },
   // Quiet-sun level, as in the GOES snapshot of 14 Nov 2026 (0.17 to 0.48 pfu).
@@ -45,6 +55,9 @@ interface ChannelState {
   level: number;
   updatedAt: MissionMinutes;
   nextSampleAt: MissionMinutes;
+  /** Crew day the current day-to-day offset belongs to, and that offset. */
+  day?: number;
+  dayOffset?: number;
 }
 
 /** Small deterministic PRNG so every demo run looks the same. */
@@ -199,7 +212,15 @@ export class SimulatedSource implements SensorSource {
     state.updatedAt = t;
     state.nextSampleAt = t + spec.intervalMin;
     const rhythm = spec.circadian ? spec.circadian * Math.sin((2 * Math.PI * (t - 360)) / MINUTES_PER_DAY) : 0;
-    const value = state.level + rhythm + spec.noise * this.gaussian();
+    if (spec.daySd) {
+      // A new crew day (same definition as the monitoring engine) draws a new offset.
+      const day = Math.floor((t - MONITORING.dayStartMinute) / MONITORING.dayMinutes);
+      if (state.day !== day) {
+        state.day = day;
+        state.dayOffset = spec.daySd * this.gaussian();
+      }
+    }
+    const value = state.level + rhythm + (state.dayOffset ?? 0) + spec.noise * this.gaussian();
     const factor = 10 ** def.decimals;
     return Math.round(clamp(value, def.display.min, def.display.max) * factor) / factor;
   }

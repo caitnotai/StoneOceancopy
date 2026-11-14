@@ -8,31 +8,33 @@
     "k": 0.5,
     "caution": {
       "ewmaLimit": 4.596,
-      "cusumH": 12.15
+      "cusumH": 12.15,
+      "singleValueLimit": 4.726
     },
     "critical": {
       "ewmaLimit": 6.179,
-      "cusumH": 21.824
+      "cusumH": 21.824,
+      "singleValueLimit": 6.131
     }
   },
   "caution": {
     "0": {
       "within1": 0,
-      "within3": 0.001,
-      "within7": 0.003,
-      "within30": 0.036,
+      "within3": 0.002,
+      "within7": 0.006,
+      "within30": 0.041,
       "medianDelay": 21
     },
     "1": {
       "within1": 0.004,
-      "within3": 0.023,
-      "within7": 0.095,
-      "within30": 0.635,
+      "within3": 0.024,
+      "within7": 0.096,
+      "within30": 0.636,
       "medianDelay": 16
     },
     "2": {
       "within1": 0.026,
-      "within3": 0.207,
+      "within3": 0.209,
       "within7": 0.625,
       "within30": 0.998,
       "medianDelay": 6
@@ -51,16 +53,30 @@
       "within30": 1,
       "medianDelay": 2
     },
+    "6": {
+      "within1": 0.828,
+      "within3": 1,
+      "within7": 1,
+      "within30": 1,
+      "medianDelay": 1
+    },
+    "8": {
+      "within1": 0.99,
+      "within3": 1,
+      "within7": 1,
+      "within30": 1,
+      "medianDelay": 1
+    },
     "0.5": {
       "within1": 0.001,
       "within3": 0.004,
-      "within7": 0.016,
-      "within30": 0.187,
+      "within7": 0.017,
+      "within30": 0.189,
       "medianDelay": 19
     },
     "1.5": {
       "within1": 0.009,
-      "within3": 0.081,
+      "within3": 0.082,
       "within7": 0.316,
       "within30": 0.951,
       "medianDelay": 11
@@ -72,7 +88,7 @@
       "within3": 0,
       "within7": 0,
       "within30": 0.002,
-      "medianDelay": 21
+      "medianDelay": 18.5
     },
     "1": {
       "within1": 0,
@@ -96,23 +112,37 @@
       "medianDelay": 5
     },
     "4": {
-      "within1": 0.072,
+      "within1": 0.075,
       "within3": 0.632,
       "within7": 0.978,
       "within30": 1,
       "medianDelay": 3
     },
+    "6": {
+      "within1": 0.444,
+      "within3": 0.987,
+      "within7": 1,
+      "within30": 1,
+      "medianDelay": 2
+    },
+    "8": {
+      "within1": 0.855,
+      "within3": 1,
+      "within7": 1,
+      "within30": 1,
+      "medianDelay": 1
+    },
     "0.5": {
       "within1": 0,
       "within3": 0,
-      "within7": 0.002,
+      "within7": 0.003,
       "within30": 0.039,
       "medianDelay": 23
     },
     "1.5": {
       "within1": 0.001,
       "within3": 0.014,
-      "within7": 0.08,
+      "within7": 0.081,
       "within30": 0.74,
       "medianDelay": 19
     }
@@ -120,23 +150,23 @@
   "sensitivity": {
     "baselineLength": {
       "5": {
-        "falseAlarm30": 0.183,
-        "detect7": 0.581
+        "falseAlarm30": 0.199,
+        "detect7": 0.582
       },
       "7": {
-        "falseAlarm30": 0.109,
-        "detect7": 0.606
+        "falseAlarm30": 0.122,
+        "detect7": 0.607
       },
       "10": {
-        "falseAlarm30": 0.066,
+        "falseAlarm30": 0.073,
         "detect7": 0.607
       },
       "14": {
-        "falseAlarm30": 0.036,
+        "falseAlarm30": 0.041,
         "detect7": 0.625
       },
       "28": {
-        "falseAlarm30": 0.008,
+        "falseAlarm30": 0.01,
         "detect7": 0.65
       }
     },
@@ -165,5 +195,40 @@
     "arl0": 100,
     "falseAlarm30": 0.501,
     "detect2sd7": 0.988
+  },
+  "lateJump": {
+    "onsetReading": 20,
+    "bySize": {
+      "3": {
+        "driftSameDay": 0.039,
+        "driftWithin3": 0.439,
+        "allSameDay": 0.116,
+        "allWithin3": 0.466
+      },
+      "4": {
+        "driftSameDay": 0.083,
+        "driftWithin3": 0.779,
+        "allSameDay": 0.297,
+        "allWithin3": 0.794
+      },
+      "5": {
+        "driftSameDay": 0.15,
+        "driftWithin3": 0.956,
+        "allSameDay": 0.569,
+        "allWithin3": 0.96
+      },
+      "6": {
+        "driftSameDay": 0.258,
+        "driftWithin3": 0.996,
+        "allSameDay": 0.807,
+        "allWithin3": 0.996
+      },
+      "8": {
+        "driftSameDay": 0.529,
+        "driftWithin3": 1,
+        "allSameDay": 0.986,
+        "allWithin3": 1
+      }
+    }
   }
 }
