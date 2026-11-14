@@ -19,7 +19,10 @@
     "validate:calibrate": "node tools/validate/calibrate-drift.mjs data/validation/drift-calibration.json",
     "validate:injection": "node tools/validate/inject-anomalies.mjs data/validation/drift-calibration.json data/validation/anomaly-injection.json",
     "validate:mmash": "node tools/validate/mmash.mjs data/snapshots/mmash/derived.json data/validation/drift-calibration.json data/validation/mmash-validation.json",
-    "validate": "npm run validate:calibrate && npm run validate:injection && npm run validate:mmash"
+    "validate": "npm run validate:calibrate && npm run validate:injection && npm run validate:mmash",
+    "api": "node server/index.mjs",
+    "demo:offline": "node tools/demo-offline.mjs",
+    "demo:check": "node tools/demo-offline.mjs --check"
   },
   "dependencies": {
     "three": "^0.187.0",
