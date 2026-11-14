@@ -1,6 +1,6 @@
 import { classify } from '../domain/engine/evaluate';
 import { STATUS_COLOR, STATUS_GLYPH, STATUS_LABEL } from '../domain/status';
-import type { IndicatorDef, MissionMinutes, Reading, Thresholds } from '../domain/types';
+import type { HealthStatus, IndicatorDef, MissionMinutes, Reading, Thresholds } from '../domain/types';
 import { h } from './dom';
 import { formatValue, formatWhen } from './format';
 
@@ -9,6 +9,13 @@ const MINUTES_PER_DAY = 1440;
 const HEIGHT = 136;
 const PAD = { left: 38, right: 12, top: 10, bottom: 22 };
 const SPARSE_LIMIT = 16;
+
+export interface ChartOptions {
+  /** Status of the indicator, for the accessible label. Defaults to the status of the latest reading. */
+  status?: HealthStatus;
+  /** False when single readings are not judged against the bands (a sensor against a daily baseline). */
+  pointStatus?: boolean;
+}
 
 const css = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -24,6 +31,7 @@ export class TrendChart {
   private readonly observer: ResizeObserver;
   private readings: readonly Reading[] = [];
   private thresholds: Thresholds;
+  private pointStatus = true;
   private now: MissionMinutes = 0;
   private hovered: Reading | null = null;
   private width = 0;
@@ -43,15 +51,16 @@ export class TrendChart {
     this.observer.observe(this.element);
   }
 
-  update(readings: readonly Reading[], thresholds: Thresholds, now: MissionMinutes): void {
+  update(readings: readonly Reading[], thresholds: Thresholds, now: MissionMinutes, options: ChartOptions = {}): void {
     this.readings = readings;
     this.thresholds = thresholds;
+    this.pointStatus = options.pointStatus ?? true;
     this.now = now;
     const latest = readings[readings.length - 1];
     this.canvas.setAttribute(
       'aria-label',
       latest
-        ? `${this.def.name}, last ${WINDOW_DAYS} days. Latest ${formatValue(latest.value, this.def)} ${this.def.unit}, ${STATUS_LABEL[classify(latest.value, thresholds)]}.`
+        ? `${this.def.name}, last ${WINDOW_DAYS} days. Latest ${formatValue(latest.value, this.def)} ${this.def.unit}, ${STATUS_LABEL[options.status ?? classify(latest.value, thresholds)]}.`
         : `${this.def.name}: no readings yet.`,
     );
     this.draw();
@@ -111,15 +120,17 @@ export class TrendChart {
     this.hovered = best;
     if (best) {
       const status = classify(best.value, this.thresholds);
+      const manual = best.source === 'manual';
+      const judged = h(
+        'span',
+        { class: 'chart-tip-status' },
+        h('span', { class: 'status-glyph', dataset: { status } }, STATUS_GLYPH[status]),
+        `${STATUS_LABEL[status]}${manual ? ' · logged by hand' : ''}`,
+      );
       this.tip.replaceChildren(
         h('strong', null, `${formatValue(best.value, this.def)} ${this.def.unit}`),
         h('span', null, formatWhen(best.t)),
-        h(
-          'span',
-          { class: 'chart-tip-status' },
-          h('span', { class: 'status-glyph', dataset: { status } }, STATUS_GLYPH[status]),
-          `${STATUS_LABEL[status]}${best.source === 'manual' ? ' · logged by hand' : ''}`,
-        ),
+        ...(this.pointStatus ? [judged] : manual ? [h('span', { class: 'chart-tip-status' }, 'Logged by hand')] : []),
       );
       this.tip.hidden = false;
       const px = this.xOf(best.t);
@@ -182,7 +193,8 @@ export class TrendChart {
       ctx.fillRect(x0, Math.round(y) - 0.5, x1 - x0, 1);
       ctx.globalAlpha = 1;
       ctx.fillStyle = muted;
-      ctx.fillText(String(value), x0 - 6, y);
+      // Baseline bands are computed values: show them at the indicator's own precision.
+      ctx.fillText(Number.isInteger(value) ? String(value) : formatValue(value, this.def), x0 - 6, y);
     }
 
     // Time axis: one label every other mission day.
