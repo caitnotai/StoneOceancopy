@@ -1,0 +1,90 @@
+{
+  "seed": 20261116,
+  "subjects": 22,
+  "baseline": {
+    "subjects": 22,
+    "population": {
+      "mean": 75.45,
+      "betweenSd": 5.72,
+      "withinSd": 13.81
+    },
+    "byReadings": {
+      "1": {
+        "rmseRaw": 14.22,
+        "rmseShrunk": 6.25,
+        "reduction": 0.56,
+        "shrinkage": 0.854
+      },
+      "2": {
+        "rmseRaw": 10.24,
+        "rmseShrunk": 5.99,
+        "reduction": 0.415,
+        "shrinkage": 0.733
+      },
+      "3": {
+        "rmseRaw": 8.41,
+        "rmseShrunk": 5.85,
+        "reduction": 0.305,
+        "shrinkage": 0.639
+      },
+      "5": {
+        "rmseRaw": 6.82,
+        "rmseShrunk": 5.62,
+        "reduction": 0.176,
+        "shrinkage": 0.51
+      },
+      "8": {
+        "rmseRaw": 5.97,
+        "rmseShrunk": 5.36,
+        "reduction": 0.101,
+        "shrinkage": 0.392
+      }
+    },
+    "coverage": {
+      "0.5": 0.508,
+      "0.8": 0.823,
+      "0.9": 0.923,
+      "0.95": 0.958,
+      "0.99": 0.984
+    }
+  },
+  "falseAlarms": {
+    "subjects": 19,
+    "evaluations": 633,
+    "nominalRate": 0.01,
+    "ewmaRate": 0.0253,
+    "cusumRate": 0.0205,
+    "medianLag1Autocorrelation": 0.51
+  },
+  "sleepBacktest": {
+    "subjects": 19,
+    "episodesVsReportedAwakenings": {
+      "spearman": 0.4,
+      "ci95": [
+        -0.03,
+        0.73
+      ]
+    },
+    "activeMinutesVsWaso": {
+      "spearman": 0.68,
+      "ci95": [
+        0.22,
+        0.91
+      ]
+    },
+    "medianDetectedEpisodes": 13,
+    "medianReportedAwakenings": 19,
+    "detectedRange": [
+      6,
+      18
+    ],
+    "reportedRange": [
+      9,
+      44
+    ],
+    "wasoQuartiles": [
+      42,
+      81
+    ]
+  }
+}

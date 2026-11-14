@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A 3D health twin for astronauts: every body system is a data object whose live status drives its color, with guidance on what to do next." />
+    <meta name="generator" content="Source code written with AI assistance (Claude Code)" />
+    <meta name="color-scheme" content="dark" />
+    <title>Crew Health Twin</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="topbar"></header>
+      <aside id="systems" aria-label="Body systems"></aside>
+      <main id="viewport">
+        <div id="stage" aria-label="Interactive 3D body. Use the body systems list for keyboard access."></div>
+        <div id="hud">
+          <div id="legend" aria-label="Status legend"></div>
+          <p id="hint">Drag to rotate · scroll to zoom · click a body system, click again to go deeper</p>
+        </div>
+        <div id="simulator"></div>
+      </main>
+      <aside id="panel" aria-label="Health assessment"></aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

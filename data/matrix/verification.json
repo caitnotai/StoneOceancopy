@@ -1,0 +1,212 @@
+{
+  "E-SANS-PREVALENCE": {
+    "status": "verificado",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "All key figures found in the abstract: 66%."
+  },
+  "E-SANS-CRITERIA": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (55). Check the full text."
+  },
+  "E-SANS-VAPER-SLEEP": {
+    "status": "verificado",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "All key figures found in the abstract: 2.2, 4.4."
+  },
+  "E-SANS-VAPER-CIRCADIAN": {
+    "status": "verificado",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "All key figures found in the abstract: 4.0, 11.7."
+  },
+  "E-SANS-LBNP-GAP": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-BONE-LOSS": {
+    "status": "verificado",
+    "method": "Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "All key figures found in the abstract: 2.7."
+  },
+  "E-BONE-ARED": {
+    "status": "fuente_localizada",
+    "method": "Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-BONE-ALENDRONATE": {
+    "status": "fuente_localizada",
+    "method": "Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (alendronate). Check the full text."
+  },
+  "E-MUSCLE-LOSS": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-MUSCLE-RESIDUAL": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-ORTHO-INCIDENCE": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (83). Check the full text."
+  },
+  "E-ORTHO-FLUID": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (29). Check the full text."
+  },
+  "E-ORTHO-COMPRESSION": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-ORTHO-LBNP": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-CO2-STANDARD": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-CO2-HEADACHE": {
+    "status": "fuente_localizada",
+    "method": "DOI resolved by Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (2.5, doubled). Check the full text."
+  },
+  "E-CO2-ANALOG": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-IMMUNE-SHUTTLE": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-IMMUNE-LONG": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-IMMUNE-GAP": {
+    "status": "fuente_localizada",
+    "method": "URL responds",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-SLEEP-STDMEASURES": {
+    "status": "verificado",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "All key figures found in the abstract: 7.33."
+  },
+  "E-SLEEP-COGNITION": {
+    "status": "verificado",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "All key figures found in the abstract: 39.52."
+  },
+  "E-SLEEP-PVT-GAP": {
+    "status": "fuente_localizada",
+    "method": "URL responds",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-RAD-TRANSIT": {
+    "status": "fuente_localizada",
+    "method": "Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (1.8). Check the full text."
+  },
+  "E-RAD-SURFACE": {
+    "status": "fuente_localizada",
+    "method": "DOI resolved by Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (0.67). Check the full text."
+  },
+  "E-RAD-ARTEMIS": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (22.3). Check the full text."
+  },
+  "E-RAD-SHIELDING": {
+    "status": "fuente_localizada",
+    "method": "URL responds",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-RAD-ASTRORAD": {
+    "status": "fuente_localizada",
+    "method": "DOI resolved by Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (25.8). Check the full text."
+  },
+  "E-RAD-NO-DAILY-LIMIT": {
+    "status": "fuente_localizada",
+    "method": "URL responds",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-MED-IMM": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-MED-IMM-VALIDATION": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-MED-AMO": {
+    "status": "fuente_localizada",
+    "method": "NTRS search",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-NUTRITION-RISK": {
+    "status": "fuente_localizada",
+    "method": "URL responds",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; this claim has no single figure to check."
+  },
+  "E-RAD-LUNAR": {
+    "status": "fuente_localizada",
+    "method": "DOI resolved by Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (1369). Check the full text."
+  },
+  "E-RAD-ISS-RATE": {
+    "status": "sin_verificar",
+    "method": "",
+    "checkedAt": "2026-11-14",
+    "note": "No source located automatically; needs a manual search."
+  }
+}
