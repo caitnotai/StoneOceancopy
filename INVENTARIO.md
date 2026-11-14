@@ -218,3 +218,39 @@ la fuente, 26 con la fuente localizada pero la cifra sin comprobar (puede estar 
 completo) y ninguna sin fuente. "Fuente localizada" no significa "cifra comprobada".
 
 Los choques de la sección 5 siguen sin tocar: se resuelven en el bloque 2.
+
+### Bloque 2: Detectar → Tratar → Verificar (14-nov-2026)
+
+Estado de cada choque de la sección 5:
+
+| # | Estado | Qué se hizo |
+|---|---|---|
+| C1 | parcial | Cada indicador declara la base de su umbral y el tablero la muestra. Los 11 que no tienen límite NASA siguen usando el rango terrestre, ahora etiquetado "Illustrative terrestrial range · not a NASA limit". Clasificar por baseline individual queda para el bloque 4 |
+| C2 | resuelto | Se quitaron las bandas de 300 y 500 mSv. La dosis se compara con un presupuesto de misión, sin configurar por defecto. Un evento solar se juzga por el flujo de protones en la escala S de NOAA |
+| C3 | resuelto | La app ya no afirma el límite de 600 mSv |
+| C4 | resuelto | Ejercicio y calorías ya no mencionan a NASA como origen del rango |
+| C5 | resuelto | El texto de sueño usa el dato de Standard Measures (7,33 h frente a 7,87 h) |
+| C6 | resuelto | Indicador `ppCO2` con el estándar [V2 6004]: sobre 3 mmHg es precaución; nunca crítico mientras el programa no fije su límite |
+| C7 | resuelto | Indicador `retinalThickness` con los criterios SANS de 20 y 55 μm |
+| C8 | resuelto | Los pasos con fármacos se ocultan salvo que el plan médico los preautorice; el interruptor está apagado por defecto |
+| C9 | resuelto | Cada paso del protocolo lleva su nivel de autoridad (1 a 4). El triage no se renombró |
+| C10 | resuelto | Toda alerta muestra la base del umbral, la clase de procedencia y la fuente |
+| C11 | resuelto | Una intervención queda pendiente hasta que el indicador se mide de vuelta en rango; si no ocurre en la ventana, queda "no verificada" |
+| C12 | parcial | El escenario solar se rotula como parámetros de simulación. Reproducir un evento real queda para el bloque 3 |
+| C13 | parcial | Las tasas de radiación se rotulan "observed environment, not an alert threshold". Faltan en `reference_map.csv` las de la estación y la Luna |
+| C14 | resuelto | Se añadió la regla `R-NUTRITION`, marcada como añadida por el proyecto y no por el reporte, para que glucosa y calorías tengan procedencia |
+
+Decisiones que tomé y conviene que revises:
+
+- **Regla añadida.** `R-NUTRITION` no está en el reporte. Sin ella, dos indicadores podían
+  alertar sin procedencia. No inventa umbrales y está marcada `origin: project`.
+- **Escala S de NOAA.** Es una escala operativa, no encaja en ninguna de las 7 clases de
+  procedencia. El umbral se rotula "NOAA operational scale · not a NASA limit" y la alerta toma
+  la procedencia de la regla de radiación.
+- **Contramedidas en el simulador.** Al marcar un paso como hecho, el simulador hace que el
+  indicador se recupere, para que Verificar tenga una respuesta que medir. Refugiarse no baja
+  el flujo: reduce a la mitad la dosis del evento.
+- **Ventana de verificación.** Tres ciclos de medición y nunca menos de 6 horas. Es un
+  parámetro del proyecto, no una cifra de NASA.
+
+Pruebas: 73 de 73.

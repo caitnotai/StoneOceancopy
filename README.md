@@ -15,10 +15,21 @@ Built for the NASA Space Apps Challenge 2026, challenge
   the BodyParts3D atlas, grouped into nine systems, each colored by its current status:
   nominal, caution or critical. Click a system on the body or in the list; click the same spot
   again to go one layer deeper. Layers can be hidden.
-- **Indicators with reasons.** Thirteen indicators (heart rate, blood pressure, SpO2, sleep, mood,
-  exercise, glucose, radiation dose...). Each one explains why it matters in space, how to
-  measure it, where its reference range comes from, and which NASA Human Research Program (HRP)
-  risk it tracks.
+- **Detect, Treat, Verify.** Every indicator card follows the same loop. *Detect* shows the
+  value, the status and where the threshold comes from. *Treat* lists the protocol steps with
+  their authority level, from a reversible environmental action (level 1) to an emergency
+  protocol (level 4). *Verify* closes an action only when the indicator is measured back in
+  range; an action that was merely carried out stays pending.
+- **Provenance on every alert.** Only two thresholds are NASA limits: cabin CO₂ (NASA-STD-3001
+  Vol. 2 [V2 6004], 3 mmHg) and retinal thickness (NASA SANS clinical criteria, 20 and 55 µm).
+  Every other range is labeled as not a NASA limit. Each rule lists its evidence with the class
+  of provenance (observed in flight, ground analog, simulated, standard...), sample size,
+  effect, confidence interval and a source that opens.
+- **Decision support, not prescription.** Medication steps are withheld unless the mission
+  medical plan pre-authorizes drugs. That switch is off by default.
+- **Sixteen indicators** (heart rate, blood pressure, SpO2, cabin CO₂, sleep, mood, exercise,
+  retinal thickness, glucose, radiation dose, solar proton flux...). Each one explains why it
+  matters in space and how to measure it.
 - **"What should I do?"** A triage verdict answers the challenge question of when a result needs
   the crew or the flight surgeons. The same finding gives a different instruction depending on
   distance from Earth: on the station, *contact the flight surgeon now*; on Mars, where a reply
@@ -28,8 +39,36 @@ Built for the NASA Space Apps Challenge 2026, challenge
 - **Self-check prompts.** Indicators the astronaut measures by hand become "due" on a schedule.
 - **Four environments**: space station, lunar base, Mars transit, Mars surface. They change the
   radiation dose rate, gravity and signal delay.
-- **Demo simulator** with six scenarios (exercise device failure, sleep disruption, viral
-  reactivation, SANS signs, solar particle event, under-eating) and a fast mission clock.
+- **Demo simulator** with seven scenarios (exercise device failure, sleep disruption, viral
+  reactivation, SANS signs, solar particle event, CO₂ removal fault, under-eating) and a fast
+  mission clock. Marking a protocol step as done makes the simulated indicator recover, so the
+  Verify step can be seen working.
+
+## Rules, evidence and sources
+
+The rules come from a research report on NASA and partner-agency sources, transcribed into
+data that the app, the tests and a SQLite database all read:
+
+| File | Content |
+|---|---|
+| `data/matrix/rules.json` | 11 Detect-Treat-Verify rules (10 from the report, 1 added by the project and flagged) |
+| `data/matrix/evidence.json` | 33 evidence claims with provenance class, n, effect, 95% CI and p |
+| `data/matrix/sources.json` | 27 sources, re-located in NASA NTRS, Crossref or by URL |
+| `reference_map.csv` | every claim linked to a source that resolves, with its verification status |
+| `data/snapshots/` | saved responses of the external sources, for offline use |
+| `INVENTARIO.md` | audit of the project against the report, in Spanish (working document) |
+
+Status in `reference_map.csv`: `verificado` means the key figure was found in the abstract of
+the source; `fuente_localizada` means the source was found but the figure was not confirmed
+(it may be in the full text). Most claims are in the second group.
+
+```bash
+npm run sources:smoke   # test every external source and save snapshots
+npm run refs:verify     # re-locate sources and rebuild reference_map.csv
+npm run db:build        # build data/crew-health.db from data/matrix
+```
+
+Data provided by the NASA STI Program (NTRS), NOAA SWPC, NASA DONKI, NASA OSDR and PhysioNet.
 
 ## Run it
 
