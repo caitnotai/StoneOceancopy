@@ -25,6 +25,12 @@ Built for the NASA Space Apps Challenge 2026, challenge
   Every other range is labeled as not a NASA limit. Each rule lists its evidence with the class
   of provenance (observed in flight, ground analog, simulated, standard...), sample size,
   effect, confidence interval and a source that opens.
+- **Compared with yourself, where NASA sets no limit.** Eleven indicators (heart rate, sleep,
+  temperature, mood, exercise...) are judged against the crew member's own first 14 days, not
+  against a general range. Three rules raise a flag: one value far from the baseline, a
+  sustained drift (EWMA) and an accumulated change (CUSUM). Their limits are calibrated, not
+  chosen: about 4% chance of a false caution per indicator per 30 days. The card shows the
+  baseline, how far the value is from it, and which rule fired.
 - **Real space weather.** The app reads the GOES proton flux from NOAA SWPC, places it on the
   NOAA S-scale and lists the solar particle events on record in NASA DONKI. It uses the live
   feed when there is a connection and a bundled snapshot when there is not.
@@ -70,13 +76,14 @@ npm run sources:smoke   # test every external source and save snapshots
 npm run ingest:space-weather   # refresh the bundled GOES and DONKI snapshot
 npm run refs:verify     # re-locate sources and rebuild reference_map.csv
 npm run db:build        # build data/crew-health.db from data/matrix
-npm run validate         # reproduce every number in METHODS.md (about two minutes)
+npm run validate         # reproduce every number in METHODS.md (about three minutes)
 ```
 
-**Statistics and their validation are in [METHODS.md](METHODS.md)**: the individual baseline
-(empirical-Bayes shrinkage), the EWMA and CUSUM drift detectors, how their limits were
+**Statistics and their validation are in [METHODS.md](METHODS.md)**: the individual baseline,
+the EWMA and CUSUM drift detectors and the single-value rule, how their limits were
 calibrated, what the anomaly-injection study and the MMASH data show, and the limitations.
-The statistics library is validated but not yet used by the app to classify indicators.
+The app classifies with the same library and the same calibrated limits that are validated
+there. The price of few false alarms is stated plainly: a small drift takes days to flag.
 
 Data provided by the NASA STI Program (NTRS), NOAA SWPC, NASA DONKI, NASA OSDR and PhysioNet.
 
@@ -94,7 +101,7 @@ npm run api             # http://localhost:8787
 |---|---|
 | `GET /rules`, `GET /rules/{id}` | the Detect-Treat-Verify matrix; one rule with its evidence |
 | `GET /evidence?rule=&provenance_class=` | evidence claims with provenance class, n, effect, CI, source and verification status |
-| `GET /state/crew-1` | status of every system and indicator, triage verdict, self-checks due |
+| `GET /state/crew-1` | status of every system and indicator, triage verdict, self-checks due; for indicators judged against the individual baseline, the baseline and the three rules |
 | `GET /radiation/now` | real proton flux, NOAA S level, whether an event is in progress |
 | `GET /alerts` | current alerts; each one carries its provenance class and source |
 | `GET /verify`, `POST /verify` | interventions and their measured outcome; record a treatment step |
@@ -227,7 +234,10 @@ Other references for the simulator and reference ranges:
   only real data, and the solar event in the demo simulator is synthetic.
 - DONKI needs a personal api.nasa.gov key (`NASA_API_KEY`); without it the events listed are
   those of the bundled snapshot.
-- **Reference ranges are illustrative.** A real mission would load ranges set by its flight
+- **The individual baselines come from simulated days**, and a sudden change in a sensor is
+  seen through its 24-hour mean, so it takes hours to flag (15 hours for the fever scenario).
+- **Reference ranges are illustrative.** They are used for the vision score and for any
+  indicator until 14 days are recorded. A real mission would load ranges set by its flight
   surgeons. This is a concept for crew decision support, not a medical device.
 - The body is one adult male. Meshes are simplified for the web, and the lung outlines, lymph
   nodes and inner ears are approximations added by this project.
