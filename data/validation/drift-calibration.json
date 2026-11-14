@@ -32,6 +32,8 @@
     "baselineReadings": 14,
     "horizonReadings": 30,
     "runs": 30000,
+    "singleValueRuns": 300000,
+    "singleValueShare": 0.2,
     "levels": {
       "caution": {
         "targetFalseAlarm": 0.05,
@@ -39,7 +41,10 @@
         "ewmaFalseAlarm": 0.025,
         "cusumH": 12.15,
         "cusumFalseAlarm": 0.0251,
-        "jointFalseAlarm": 0.034
+        "driftJointFalseAlarm": 0.034,
+        "singleValueLimit": 4.726,
+        "singleValueFalseAlarm": 0.01,
+        "jointFalseAlarm": 0.038
       },
       "critical": {
         "targetFalseAlarm": 0.005,
@@ -47,7 +52,10 @@
         "ewmaFalseAlarm": 0.0025,
         "cusumH": 21.824,
         "cusumFalseAlarm": 0.0025,
-        "jointFalseAlarm": 0.0037
+        "driftJointFalseAlarm": 0.0037,
+        "singleValueLimit": 6.131,
+        "singleValueFalseAlarm": 0.001,
+        "jointFalseAlarm": 0.0042
       }
     }
   }
