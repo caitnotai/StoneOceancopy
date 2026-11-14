@@ -1,0 +1,173 @@
+# INVENTARIO
+
+Auditoría de solo lectura del repo `crew-health-twin`, hecha el 14-nov-2026, contra el objetivo
+descrito en el encargo y la matriz de `deep-research-report.md`. No se modificó ningún archivo
+existente. Este documento es lo único nuevo.
+
+## 1. Resumen
+
+Lo que existe es una aplicación web estática: un cuerpo 3D por sistemas, un motor de reglas con
+umbrales fijos, un simulador de sensores y un tablero. Corre entera en el navegador.
+
+No existe nada de la capa de datos del objetivo: no hay base de datos, ni API, ni ingesta de
+fuentes externas, ni motor estadístico, ni tabla de evidencia con procedencia.
+
+La lógica actual es Detectar y Tratar; no hay paso de Verificar. Además, casi todos los
+umbrales actuales son rangos clínicos terrestres fijos, que es justo lo que el reporte pide no
+hacer donde NASA no publica un límite. Ese es el choque principal y está detallado en la
+sección 5.
+
+## 2. Línea base
+
+| Comprobación | Resultado |
+|---|---|
+| `npm test` (Vitest) | 28 de 28 pruebas pasan (motor 16, simulador 7, clasificación del atlas 5) |
+| `npx tsc --noEmit` | sin errores |
+| `npm run build` | compila; `dist/` de sitio estático |
+| Llamadas de red en `src/` | ninguna (`fetch`, WebSocket, almacenamiento local: cero usos) |
+| Control de versiones | **el repo no está bajo git** |
+
+Las pruebas existentes contienen 13 afirmaciones de estado (`caution`, `critical`) que salen de
+los umbrales actuales. Cualquier cambio de umbral las afecta, así que no se tocan sin tu
+confirmación.
+
+## 3. Stack y convenciones detectadas
+
+| Aspecto | Lo que hay |
+|---|---|
+| Lenguaje | TypeScript estricto, módulos ES. Scripts de herramientas en `.mjs` |
+| Runtime y build | Node 24, Vite 8, Vitest 5. Sin framework de UI: DOM directo con un ayudante `h()` |
+| 3D | three.js y three-mesh-bvh; modelo `public/models/body.glb` derivado de BodyParts3D |
+| Backend, base de datos, API | no existen |
+| Python | no se usa. En este PC hay Python 3.15.0 instalado |
+| Capas | `src/domain` (reglas puras), que alimenta a `src/data` (store, reloj, fuentes), que alimenta a `src/scene` y `src/ui`. `src/main.ts` es el único que conoce todas |
+| Catálogos como datos | objetos `Record<Id, Def>` en `src/domain/catalog/*.ts` |
+| Identificadores | uniones de cadenas en camelCase: `IndicatorId`, `SystemId`, `EnvironmentId` |
+| Estados | `'unknown' \| 'nominal' \| 'caution' \| 'critical'` |
+| Lectura | `{ indicatorId, value, t, source }`; `t` en minutos de misión; `source` es `simulated`, `manual` o `sensor` |
+| Punto de extensión de datos | interfaz `SensorSource` y `HealthStore.ingest()` |
+| Herramientas | `tools/*.mjs`, reciben rutas por argumento, se exponen como scripts de npm |
+| Pruebas | `tests/*.test.ts` |
+| Idioma | interfaz, README y comentarios en inglés (lo exige el concurso para todo material enlazado) |
+| Datos crudos | `assets-src/` fuera de git |
+
+Seguiré estas convenciones tal cual.
+
+## 4. Inventario
+
+| Componente del objetivo | Estado | Ubicación | Acción |
+|---|---|---|---|
+| Reglas Detectar → Tratar → Verificar | parcial | `src/domain/engine/evaluate.ts` (detectar por bandas fijas), `guidance` en `src/domain/catalog/indicators.ts` (tratar), `src/domain/engine/triage.ts` (a quién escalar). No hay verificar. No es la matriz del reporte | extender |
+| Tabla de evidencia con procedencia | falta | solo hay texto libre: `reference` en `indicators.ts`, `radiationReference` en `environments.ts`, y `risks[]` en `systems.ts`, que apuntan todos a la página general de riesgos del HRP | crear |
+| Ingesta de radiación (SWPC, DONKI) | falta | la dosis es simulada en `src/data/sources/SimulatedSource.ts` | crear, sobre la interfaz `SensorSource` |
+| Ingesta de MMASH | falta | – | crear |
+| Ingesta de OSDR / I4 | falta | – | crear |
+| Motor de baselines | falta | el simulador tiene valores base constantes por canal, no baselines estimados | crear |
+| Detección de deriva | parcial | `trendPerDay()` en `evaluate.ts`: pendiente por mínimos cuadrados sobre 3 días y bandera `worsening` proyectando 2 días. Sin EWMA ni CUSUM, sin calibración. El umbral de "Steady" (3 % de la escala) en `src/ui/format.ts` es ad hoc | extender |
+| Dosis acumulada | parcial | dosis acumulada simulada (tasa del entorno más ráfaga de escenario) en `SimulatedSource.ts`; tasa calculada en `src/scene/BodyViewport.ts`. Sin detección de SPE por flujo, sin presupuesto de misión | extender |
+| Regla de CO₂ | falta | solo una frase en la guía de SpO₂ menciona el CO₂ de cabina | crear |
+| Simulador | existe | `SimulatedSource.ts`, `scenarios.ts`, `MissionClock.ts`; semilla fija, 6 escenarios, 14 días de historia | reusar; extender con canal de CO₂ e inyección de anomalías |
+| API | falta | no hay servidor. Solo acciones en proceso: `src/app/actions.ts` y `HealthStore` | crear |
+| Tablero | existe (parcial frente al objetivo) | `src/ui/*`, `src/scene/*`: cuerpo 3D, lista de sistemas, veredicto, tarjetas con gráfica, guía y registro manual. Falta el paso Verificar, la procedencia en cada alerta y un panel de radiación en vivo | extender |
+| METHODS.md | falta | `README.md` cubre arquitectura y límites, no métodos estadísticos | crear |
+| reference_map | falta | – | crear |
+| Tests | existe | `tests/engine.test.ts`, `tests/simulator.test.ts`, `tests/classify.test.ts` | reusar; añadir |
+| Demo offline | parcial | la app ya corre sin red una vez instalada. No hay snapshots (no hay fuentes) ni un script único de demo | extender |
+
+## 5. Choques entre lo existente y el reporte
+
+No corregí ninguno. Cada fila propone el cambio mínimo.
+
+| # | Qué hay hoy | Qué dice el reporte o el encargo | Cambio mínimo propuesto |
+|---|---|---|---|
+| C1 | 12 de 13 indicadores se clasifican con bandas fijas de rangos clínicos terrestres (FC 50–100, SpO₂ ≥ 95, glucosa 70–140, etc.) | Donde NASA no publica límite (NR), usar desviación frente al baseline individual y etiquetarlo "no es límite NASA". El reporte cita como error concreto asignar "SpO₂ amarillo 94 %" | Añadir a cada indicador un campo `thresholdKind` y, para los NR, clasificar por baseline individual. Las bandas actuales quedan como respaldo marcado "rango terrestre ilustrativo, no es límite NASA" mientras no haya baseline |
+| C2 | `radiationDose`: bandas en 300 y 500 mSv, con la etiqueta "NASA-STD-3001 career limit of 600 mSv; bands at 50% and about 83%" | "mSv/d amarillo/rojo: NR". Usar dosis acumulada, tasa, detección de SPE y margen contra un presupuesto de misión configurable, NR por defecto | Las bandas 300/500 las inventé yo: quitarlas. Estado de radiación por detección de SPE y por margen contra presupuesto cuando el presupuesto esté configurado. Cambia el color del sistema de radiación y 1 prueba |
+| C3 | El límite de 600 mSv no sale del reporte | El reporte solo dice que NASA-STD-3001 Vol. 1 fija límites de misión y carrera, sin cifra | Marcarlo "sin verificar" en `reference_map.csv` hasta comprobarlo en la fuente |
+| C4 | Ejercicio y calorías llevan "(NASA)" en su referencia: "Illustrative target based on ISS practice … (NASA)", "(NASA nutrition guidance)" | Ningún umbral etiquetado como NASA salvo [V2 6004] y los criterios SANS. Reporte: NR universal, comparar con baseline individual | Quitar "NASA" de esas etiquetas y pasarlos a baseline individual |
+| C5 | Sueño: banda fija ≥ 7 h y el texto "Station crews are scheduled 8.5 hours of sleep but average close to 6" | Standard Measures (n=19, 2.137 noches): 7,33 ± 1,16 h en vuelo frente a 7,87 ± 1,10 h antes. "No suponiendo que todo astronauta duerme seis horas" | Reemplazar el texto por el dato del reporte y evaluar contra baseline individual |
+| C6 | No existe indicador de ppCO₂ | Único umbral ambiental oficial: [V2 6004], media de 1 h ≤ 3 mmHg | Crear el indicador y la regla dura, con procedencia `estandar_obligatorio` |
+| C7 | SANS se mide con una nota subjetiva de 0 a 10 (`visionChange`) | Criterio clínico NASA: ΔTRT ≥ 20 μm indicación temprana; ≥ 55 μm y/o Frisén ≥ 1 clínicamente preocupante | Añadir indicador de ΔTRT por OCT con procedencia `criterio_clinico_NASA`. La nota subjetiva queda como síntoma, sin umbral NASA |
+| C8 | Tres pasos de guía indican fármacos u oxígeno sin condición: "Take a fever reducer…", "Take anti-motion-sickness medication…", "Start supplemental oxygen…" (`indicators.ts`, líneas 143, 253 y 280) | Todo fármaco exige el flag "preautorizado en plan médico", apagado por defecto | Ocultar esos pasos salvo que el flag esté encendido y mostrar en su lugar "requiere plan médico preautorizado". Cambia lo que hoy se ve en pantalla |
+| C9 | `triage.ts` tiene 4 niveles, pero son de escalamiento (nominal, autocuidado, oficial médico, consulta a tierra) | Los 4 niveles de autoridad del reporte son de tratamiento: acción ambiental reversible, contramedida no farmacológica preaprobada, fármaco prescrito en el plan, emergencia | Son ejes distintos. No renombrar el triage; añadir `authorityLevel` a cada acción de tratamiento |
+| C10 | Ninguna alerta lleva `provenance_class` ni fuente | Criterio de aceptación: ninguna alerta sin procedencia y fuente | Toda regla referencia filas de evidencia; el tablero las muestra en cada alerta |
+| C11 | No hay paso Verificar: una acción no deja rastro ni se comprueba su efecto | "Una intervención no debería cerrarse como exitosa por haber sido ejecutada" | Registrar intervención y cerrar solo con la métrica objetiva de la matriz |
+| C12 | Escenario "Solar particle event": 320 mSv en 8 h | No hay fuente para esa magnitud | Marcarlo parámetro de simulación, no observado; o sustituirlo por un evento real reproducido desde un snapshot de GOES |
+| C13 | Entornos: Marte superficie 0,67 mSv/d; estación 0,6 y Luna 1,37 no están en el reporte | Reporte: 1,84 tránsito y 0,7 superficie, como "ambiente observado, no umbral" | Etiquetarlos así y vincular cada cifra en `reference_map.csv` |
+| C14 | `metabolic` (glucosa, calorías) no corresponde a ninguna fila de la matriz | La matriz tiene 10 condiciones | Conservarlo fuera de la matriz, marcado sin regla NASA |
+
+### Afirmaciones ya escritas en el código que hay que re-vincular
+
+Son mías, de la primera versión, y hoy no tienen URL ni DOI: pérdida ósea de 1–1,5 % al mes;
+dos horas de ejercicio al día en la estación; 8,5 h programadas y 6 h reales de sueño;
+600 mSv de límite de carrera; 0,5–0,7 mSv/día en la estación; las cifras de RAD, de Chang'E-4 y
+los rangos de AHA, ADA y AASM. Van a `reference_map.csv` como "sin verificar" hasta
+comprobarlas.
+
+### Sobre el reporte
+
+`deep-research-report.md` trae 114 marcadores de cita inválidos que apuntan a 97 referencias
+distintas. Re-vincular las 97 es mucho trabajo manual; propongo empezar por las que sostienen
+las 10 filas de la matriz y dejar el resto como "sin verificar".
+
+## 6. Capas que no existen: propuesta de stack
+
+Necesito tu confirmación antes de crear nada aquí.
+
+**Recomendación: seguir en TypeScript y Node, sin Python.**
+
+| Capa | Propuesta | Por qué |
+|---|---|---|
+| Motor estadístico | módulos puros en `src/domain/stats/`, probados con Vitest | corre en el navegador, así el tablero sigue funcionando sin servidor y sin red |
+| Ingesta | scripts `tools/ingest/*.mjs` que guardan snapshots en `data/snapshots/<fuente>/` con URL, fecha y hash | misma convención que `tools/build-body-model.mjs` |
+| Base de datos | SQLite con `node:sqlite`, que ya viene en Node 24. Migraciones en `tools/db/migrations/*.sql`. Se exporta a JSON estático para el tablero | cero dependencias nuevas; el sitio publicado sigue siendo estático |
+| API | servidor pequeño con `node:http` sobre la misma base y el mismo motor: `/rules`, `/evidence`, `/state/{crew_id}`, `/radiation/now`, `/alerts`, `/verify` | una sola implementación de las reglas |
+
+La alternativa es la opción por defecto del encargo, Python con FastAPI. Tiene mejores
+librerías estadísticas, pero obliga a duplicar el motor de reglas en dos lenguajes o a que el
+tablero dependa de un servidor alojado, cuando los jueces necesitan un enlace público que abra
+sin instalar nada. Además Python 3.15 es muy reciente: habría que comprobar que numpy, scipy y
+pandas se instalan.
+
+## 7. Plan de cambios mínimos
+
+Todo es aditivo salvo donde se indica.
+
+| Bloque | Qué | Archivos nuevos | Archivos existentes que se tocan |
+|---|---|---|---|
+| 0 | Poner el repo bajo git y abrir rama `feat/evidence-engine` | `.git` | `.gitignore` (añadir `data/raw/`) |
+| 1 | Matriz del reporte y evidencia con procedencia; `reference_map.csv`; base de datos | `data/matrix/rules.json`, `data/matrix/evidence.json`, `reference_map.csv`, `tools/db/migrations/001_init.sql`, `tools/db/build.mjs`, `src/domain/evidence/*`, `tests/evidence.test.ts` | `package.json` (scripts) |
+| 2 | Detectar → Tratar → Verificar en el motor y el tablero: tipo de umbral, CO₂, ΔTRT, niveles de autoridad, flag de fármacos, verificación, procedencia en cada alerta | `src/domain/engine/verify.ts`, `src/domain/medicalPlan.ts`, `src/ui/ProvenanceBadge.ts`, pruebas | `types.ts`, `indicators.ts`, `SimulatedSource.ts`, `HealthStore.ts`, `IndicatorCard.ts`, `SidePanel.ts`, y las pruebas afectadas por C1, C2 y C8 |
+| 3 | Radiación real: SWPC y DONKI con snapshots, detección de SPE, dosis y margen contra presupuesto | `tools/ingest/swpc.mjs`, `tools/ingest/donki.mjs`, `src/domain/radiation/*`, `src/data/sources/SwpcSource.ts`, panel de radiación | `main.ts` (conectar la fuente) |
+| 4 | Motor estadístico: baseline empírico-bayesiano, EWMA, CUSUM, logístico de CO₂; MMASH y calibración | `src/domain/stats/*`, `tools/ingest/mmash.mjs`, `tools/validate/*.mjs`, `data/validation/*`, `METHODS.md` | `evaluate.ts` (usar baseline cuando exista) |
+| 5 | OSDR / I4: cambios antes y después con intervalos creíbles | `tools/ingest/osdr.mjs`, `tools/validate/i4.mjs` | – |
+| 6 | API y demo offline | `server/index.mjs`, `tools/demo-offline.mjs` | `package.json` (scripts) |
+
+### Alcance frente al plazo
+
+La entrega cierra el domingo 15-nov a las 23:59 y además faltan el video, la página del
+proyecto y publicar. El alcance completo del encargo no cabe con holgura. Mi orden recomendado
+es 0, 1, 2, 3 y 4, y dejar para el final lo que menos aporta a la demo:
+
+- el bloque 5: I4 son 4 personas en un vuelo de 3 días, valida el pipeline pero no cambia lo
+  que se ve;
+- del bloque 4, las curvas de calibración y el análisis de sensibilidad;
+- del bloque 6, el servidor de API: el tablero no lo necesita para funcionar.
+
+## 8. Decisiones que necesito
+
+1. **Stack** de las capas nuevas: TypeScript y Node (recomendado) o Python con FastAPI.
+2. **Git**: crear el repo, hacer un primer commit con el estado actual y abrir la rama.
+3. **C2, radiación**: confirmar que quito las bandas de 300 y 500 mSv. Cambia el color del
+   sistema y una prueba.
+4. **C1**: confirmar que las bandas terrestres quedan solo como respaldo etiquetado hasta que
+   haya baseline. Puede cambiar hasta 13 afirmaciones en las pruebas.
+5. **C8, fármacos**: confirmar que los tres pasos se ocultan tras el flag, apagado por defecto.
+6. **Idioma**: el concurso exige inglés en todo lo enlazado. Propongo `METHODS.md` y el tablero
+   en inglés, y dejar las claves de `provenance_class` tal como las diste, con etiquetas
+   visibles en inglés. Este inventario está en español: habría que traducirlo o no publicarlo.
+7. **Archivos del reporte**: `deep-research-report.md` y el `.docx` están en la raíz. Si se
+   publica el repo quedan públicos, en español y con marcadores de cita rotos. No los moví.
+   Propongo `docs/research/` o dejarlos fuera de git.
+8. **DONKI** pide clave de api.nasa.gov. Puedo probar con `DEMO_KEY`, que tiene un límite
+   bajo, o usar una tuya.
+9. **Alcance**: si aceptas el recorte de la sección 7 o prefieres intentarlo todo.
