@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:model": "node tools/build-body-model.mjs assets-src/bodyparts3d assets-src/bodyparts3d/obj/isa_BP3D_4.0_obj_99 public/models/body.glb"
+    "build:model": "node tools/build-body-model.mjs assets-src/bodyparts3d assets-src/bodyparts3d/obj/isa_BP3D_4.0_obj_99 public/models/body.glb",
+    "sources:smoke": "node tools/ingest/smoke.mjs data/snapshots",
+    "refs:verify": "node tools/references/verify.mjs data/matrix reference_map.csv",
+    "db:build": "node tools/db/build.mjs data/matrix tools/db/migrations data/crew-health.db"
   },
   "dependencies": {
     "three": "^0.187.0",

@@ -1,0 +1,164 @@
+[
+  {
+    "file": "swpc/integral-protons-6-hour.json",
+    "source": "swpc",
+    "url": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-6-hour.json",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:27.499Z",
+    "bytes": 59935,
+    "sha256": "90cf0e30a0d93a2392dc6d8a3e45fe1cbb95798434d9ac0a40c2dc5e3f4b504b"
+  },
+  {
+    "file": "swpc/integral-protons-1-day.json",
+    "source": "swpc",
+    "url": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:27.591Z",
+    "bytes": 242297,
+    "sha256": "245841043dc82837378d7dab57355021119949875ddcec41bf8bfb1a79fa4ac8"
+  },
+  {
+    "file": "swpc/integral-protons-3-day.json",
+    "source": "swpc",
+    "url": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-3-day.json",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:27.739Z",
+    "bytes": 727661,
+    "sha256": "9babef027a04681b1c14686881107d66572586dd3d29965f0b0ddcecdb2a4675"
+  },
+  {
+    "file": "swpc/integral-protons-7-day.json",
+    "source": "swpc",
+    "url": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-7-day.json",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:27.897Z",
+    "bytes": 1698925,
+    "sha256": "6af7b074879e35e899a77463fc6da32325f4e3cee592c8f0944cea0c81d07943"
+  },
+  {
+    "file": "swpc/differential-protons-1-day.json",
+    "source": "swpc",
+    "url": "https://services.swpc.noaa.gov/json/goes/primary/differential-protons-1-day.json",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:28.010Z",
+    "bytes": 536041,
+    "sha256": "54209a615467211a9f305fc84415cc6322e827492f97ba252e7dbfd50b136ff9"
+  },
+  {
+    "file": "swpc/noaa-scales.json",
+    "source": "swpc",
+    "url": "https://services.swpc.noaa.gov/products/noaa-scales.json",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:28.078Z",
+    "bytes": 1099,
+    "sha256": "8e365a01dc302b7401dcbb676b130554c7a08be15b680618db445f648e1da3d3"
+  },
+  {
+    "file": "swpc/noaa-scales-explanation.html",
+    "source": "swpc",
+    "url": "https://www.swpc.noaa.gov/noaa-scales-explanation",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:29.702Z",
+    "bytes": 76254,
+    "sha256": "df5aeebddd5520ca2cb0f8a2788e1ee63dd1e81dd1ba72b6678af3a5cedfec33"
+  },
+  {
+    "file": "donki/sep-2024-05_06.api-nasa.json",
+    "source": "donki",
+    "url": "https://api.nasa.gov/DONKI/SEP?startDate=2024-05-01&endDate=2024-06-30&api_key=***",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:30.610Z",
+    "bytes": 16090,
+    "sha256": "8bdbcfa66a3fc5757a8afd2e729107a2dd2e0a95d86c7f04ad6e98c1bdccd5f8"
+  },
+  {
+    "file": "osdr/files-OSD-569.json",
+    "source": "osdr",
+    "url": "https://osdr.nasa.gov/osdr/data/osd/files/569",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:41.239Z",
+    "bytes": 4988,
+    "sha256": "5fa72a93326ca73ea76f953d4ac0cdd3ee2623ec9c4343415fde28fe808cbfdc"
+  },
+  {
+    "file": "osdr/files-OSD-570.json",
+    "source": "osdr",
+    "url": "https://osdr.nasa.gov/osdr/data/osd/files/570",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:41.715Z",
+    "bytes": 5320,
+    "sha256": "c00563f75f95982cbe4dbeed0552c315bb8676be5da5241b9715159fa0e4fa49"
+  },
+  {
+    "file": "osdr/files-OSD-571.json",
+    "source": "osdr",
+    "url": "https://osdr.nasa.gov/osdr/data/osd/files/571",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:41.890Z",
+    "bytes": 6296,
+    "sha256": "5f4ac18ff3e120e924c4bd1deb21e79ee2a770199564af801a5e5ab4a7c6b5a9"
+  },
+  {
+    "file": "osdr/files-OSD-575.json",
+    "source": "osdr",
+    "url": "https://osdr.nasa.gov/osdr/data/osd/files/575",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:42.061Z",
+    "bytes": 4144,
+    "sha256": "4c2430cfcbcd979125761984815ba8d9c8fb7899330eba02cb90bd48d5b19c00"
+  },
+  {
+    "file": "osdr/meta-OSD-569.json",
+    "source": "osdr",
+    "url": "https://osdr.nasa.gov/osdr/data/osd/meta/569",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:42.804Z",
+    "bytes": 361799,
+    "sha256": "1386ef12579f21717eeaacf5509732dc9c4d42db0f0c79a2e69562d966fdba31"
+  },
+  {
+    "file": "osdr/biodata-metadata-OSD-569.txt",
+    "source": "osdr",
+    "url": "https://visualization.osdr.nasa.gov/biodata/api/v2/query/metadata/?id.accession=OSD-569",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:43.314Z",
+    "bytes": 12993,
+    "sha256": "6cb5c987411661f7491a998fcc758016f45aa986ef1a271942a9ccf92c965c6c"
+  },
+  {
+    "file": "osdr/biodata-dataset-OSD-569.json",
+    "source": "osdr",
+    "url": "https://visualization.osdr.nasa.gov/biodata/api/v2/dataset/OSD-569/",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:43.452Z",
+    "bytes": 17069,
+    "sha256": "c56f692919262e26e1d533973e17549d6a7bd64491cbde8c682767ab5bb9b4fb"
+  },
+  {
+    "file": "mmash/file-index.html",
+    "source": "mmash",
+    "url": "https://physionet.org/files/mmash/1.0.0/",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:44.626Z",
+    "bytes": 566,
+    "sha256": "491b97efb6283c73e9ad948349dba629b89072f90c4776200ec2a8a4ba49dc8b"
+  },
+  {
+    "file": "mmash/s3-listing.xml",
+    "source": "mmash",
+    "url": "https://physionet-open.s3.amazonaws.com/?list-type=2&prefix=mmash/&max-keys=40",
+    "method": "GET",
+    "fetchedAt": "2026-11-14T18:15:45.119Z",
+    "bytes": 1136,
+    "sha256": "5652d70b730dc146f33bc359184d8b19f6f818c05f328c3b576efae09f2f7d52"
+  },
+  {
+    "file": "ntrs/search-co2-headache.json",
+    "source": "ntrs",
+    "url": "https://ntrs.nasa.gov/api/citations/search",
+    "method": "POST",
+    "fetchedAt": "2026-11-14T18:15:46.085Z",
+    "bytes": 20037,
+    "sha256": "105a9b4101d4bd8a1696e254f0a9b48c75b9a5caa94a7fc0d141894f6f7a36aa"
+  }
+]
