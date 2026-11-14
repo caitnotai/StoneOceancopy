@@ -103,6 +103,8 @@ export interface RuleDetect {
 /** One row of the Detect -> Treat -> Verify matrix. */
 export interface Rule {
   id: string;
+  /** Set to 'project' for rules added by this project; absent for the rows of the research report. */
+  origin?: 'project';
   hazard: HazardId;
   condition: string;
   hrrRisk: string;

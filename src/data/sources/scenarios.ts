@@ -62,8 +62,9 @@ export const SCENARIOS: ScenarioDef[] = [
   {
     id: 'sans',
     name: 'Fluid shift (SANS signs)',
-    description: 'Headward fluid shift starts to affect the eyes and balance.',
+    description: 'Headward fluid shift: retinal thickness passes the NASA SANS criteria (20 µm, then 55 µm).',
     effects: {
+      retinalThickness: { target: 64, tauHours: 60 },
       visionChange: { target: 5.8, tauHours: 60 },
       dizziness: { target: 3.4, tauHours: 30 },
     },
@@ -71,9 +72,15 @@ export const SCENARIOS: ScenarioDef[] = [
   {
     id: 'solar-event',
     name: 'Solar particle event',
-    description: 'A solar storm delivers a large radiation dose within hours.',
-    effects: { mood: { target: 6.2 } },
+    description: 'Simulated solar storm: proton flux climbs to NOAA level S3 for 8 hours. Flux and dose magnitudes are simulation parameters, not observations.',
+    effects: { protonFlux: { target: 1800, tauHours: 3 }, mood: { target: 6.2 } },
     radiationBurst: { totalMSv: 320, hours: 8 },
+  },
+  {
+    id: 'co2-fault',
+    name: 'CO₂ removal fault',
+    description: 'A scrubber underperforms: the one-hour CO₂ average climbs past the 3 mmHg NASA standard.',
+    effects: { ppCO2: { target: 4.4, tauHours: 4 } },
   },
   {
     id: 'under-eating',

@@ -24,6 +24,9 @@ function snapshot(t: number, overrides: Partial<Record<IndicatorId, number>> = {
     glucose: 95,
     calorieIntake: 100,
     radiationDose: 30,
+    ppCO2: 2.1,
+    retinalThickness: 6,
+    protonFlux: 0.3,
   };
   const map = new Map<IndicatorId, Reading[]>();
   for (const def of INDICATOR_LIST) map.set(def.id, [reading(def.id, overrides[def.id] ?? nominal[def.id], t)]);

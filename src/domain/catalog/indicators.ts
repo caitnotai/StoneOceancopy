@@ -1,12 +1,17 @@
+import { doseThresholds, MISSION_DOSE_BUDGET_MSV } from '../radiation/budget';
 import type { IndicatorDef, IndicatorId, SystemId } from '../types';
 
 const INF = Number.POSITIVE_INFINITY;
 
 /**
- * Health indicators, as data. Reference ranges are ILLUSTRATIVE defaults taken from general
- * clinical guidance and public NASA material; a real mission would load ranges set by its
- * flight surgeons (see `EnvironmentDef.thresholdOverrides`). This is decision support for
- * training and concept work, not a medical device.
+ * Health indicators, as data.
+ *
+ * Only two indicators carry an official NASA limit: ppCO2 (NASA-STD-3001 Vol. 2 [V2 6004])
+ * and retinal thickness (NASA SANS clinical criteria). Proton flux uses the NOAA S-scale.
+ * Every other range here is an ILLUSTRATIVE terrestrial range, used only until an individual
+ * baseline is available, and it is never a NASA limit. `evidence/indicatorRules.ts` records
+ * the basis of each one, and the dashboard shows it next to every alert.
+ * This is decision support for training and concept work, not a medical device.
  */
 export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
   heartRate: {
@@ -90,7 +95,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
         'Report the gap so ground teams can adjust the countermeasure plan.',
       ],
     },
-    reference: 'Illustrative target based on ISS practice, where crews exercise about 2 hours per day (NASA).',
+    reference: 'Illustrative target, not a NASA limit. NASA publishes no alert threshold: compare with the prescribed programme and your own baseline.',
   },
   aerobicExercise: {
     id: 'aerobicExercise',
@@ -118,7 +123,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
         'Tell the Crew Medical Officer so workload can be rebalanced.',
       ],
     },
-    reference: 'Illustrative target based on ISS practice, where crews exercise about 2 hours per day (NASA).',
+    reference: 'Illustrative target, not a NASA limit. NASA publishes no alert threshold: compare with the prescribed programme and your own baseline.',
   },
   spo2: {
     id: 'spo2',
@@ -158,7 +163,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
     display: { min: 2, max: 10 },
     thresholds: { nominal: { min: 7, max: 10 }, caution: { min: 5, max: 12 } },
     whyItMatters:
-      'Station crews are scheduled 8.5 hours of sleep but average close to 6. Chronic sleep loss slows reactions and wears down mood.',
+      'Sleep loss in flight is common but not inevitable: Standard Measures data on 19 station crew members show 7.33 h in flight against 7.87 h before. Judge your sleep against your own baseline and trend.',
     howToMeasure: 'Estimated overnight by the wrist wearable (actigraphy). Confirm with a one-tap sleep diary on waking.',
     guidance: {
       caution: [
@@ -172,7 +177,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
         'Talk to the Crew Medical Officer about fatigue countermeasures.',
       ],
     },
-    reference: 'Adults need 7 or more hours (AASM/SRS consensus). NASA schedules 8.5 hours; measured ISS average is about 6 (Barger et al., 2014).',
+    reference: 'Illustrative range (adults: 7 hours or more, AASM/SRS consensus). Not a NASA limit: NASA publishes no sleep alert threshold.',
   },
   mood: {
     id: 'mood',
@@ -335,7 +340,7 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
         'Ask ground nutrition support for an adjusted meal plan.',
       ],
     },
-    reference: 'Illustrative band around the individual energy requirement (NASA nutrition guidance).',
+    reference: 'Illustrative band around the individual energy requirement. Not a NASA limit.',
   },
   radiationDose: {
     id: 'radiationDose',
@@ -346,9 +351,9 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
     acquisition: 'sensor',
     cadenceHours: 6,
     display: { min: 0, max: 650 },
-    thresholds: { nominal: { min: 0, max: 300 }, caution: { min: 0, max: 500 } },
+    thresholds: doseThresholds(MISSION_DOSE_BUDGET_MSV),
     whyItMatters:
-      'Dose only goes up. Tracking it against the career limit tells you when shielding and schedule changes are worth their cost.',
+      'Dose only goes up. Tracking it against the mission budget tells you when shielding and schedule changes are worth their cost.',
     howToMeasure: 'Read from your personal active dosimeter. Keep it on your body at all times, including during sleep.',
     guidance: {
       caution: [
@@ -362,7 +367,92 @@ export const INDICATORS: Record<IndicatorId, IndicatorDef> = {
         'Report cumulative dose so mission planners can adjust your exposure.',
       ],
     },
-    reference: 'NASA-STD-3001 career limit of 600 mSv effective dose; bands at 50% and about 83% of the limit.',
+    reference: 'Tracked against a mission budget set by the program (none set). NASA publishes no yellow or red limit for daily or cumulative dose on exploration missions.',
+  },
+  ppCO2: {
+    id: 'ppCO2',
+    systemId: 'respiratory',
+    name: 'Cabin CO₂ (1-hour average)',
+    unit: 'mmHg',
+    decimals: 1,
+    acquisition: 'sensor',
+    cadenceHours: 1,
+    display: { min: 0, max: 8 },
+    // Official limit: 3 mmHg. Off-nominal limits are set per program, so exceeding 3 is
+    // "caution" and nothing here is "critical" until a program limit is configured.
+    thresholds: { nominal: { min: 0, max: 3 }, caution: { min: 0, max: INF } },
+    whyItMatters:
+      'CO₂ builds up in a closed cabin and in pockets of still air. On the station, the odds of headache roughly doubled for each extra 1 mmHg.',
+    howToMeasure: 'Read by the cabin atmosphere monitor nearest to you. The value shown is the average of the last hour.',
+    guidance: {
+      caution: [
+        'Increase CO₂ scrubbing and ventilation in this module.',
+        'Move out of still-air pockets and point a fan at your work area.',
+        'Reduce exertion and re-check the one-hour average.',
+      ],
+      critical: [
+        'Follow the cabin atmosphere off-nominal procedure.',
+        'Alert the whole crew and move to a module with lower CO₂.',
+        'Report to mission control as soon as communications allow.',
+      ],
+    },
+    reference: 'NASA-STD-3001 Vol. 2 [V2 6004]: one-hour average ppCO₂ of 3 mmHg or less. Off-nominal limits are set per program.',
+  },
+  retinalThickness: {
+    id: 'retinalThickness',
+    systemId: 'sensory',
+    name: 'Retinal thickness change (OCT)',
+    unit: 'µm',
+    decimals: 0,
+    acquisition: 'self-check',
+    cadenceHours: 336,
+    display: { min: -20, max: 90 },
+    thresholds: { nominal: { min: -20, max: 19 }, caution: { min: -20, max: 54 } },
+    whyItMatters:
+      'Swelling of the optic nerve head is the earliest measurable sign of SANS and can appear before you notice any change in vision.',
+    howToMeasure:
+      'Run the OCT scan of both eyes. The value is the change in total peripapillary retinal thickness against your pre-flight scan; the worse eye counts.',
+    guidance: {
+      caution: [
+        'Repeat the OCT scan to confirm the change.',
+        'Review cabin CO₂, your sleep and the fluid-shift countermeasures.',
+        'Report the change at your next private medical conference.',
+      ],
+      critical: [
+        'Stop vision-critical tasks if you notice any visual deficit.',
+        'Run the full vision test set: acuity, grid and refraction.',
+        'Tell the Crew Medical Officer and send the scans to the flight surgeons.',
+      ],
+    },
+    reference: 'NASA SANS clinical criteria: 20 µm or more is an early indication; 55 µm or more and/or Frisén grade 1 or higher is clinically concerning.',
+  },
+  protonFlux: {
+    id: 'protonFlux',
+    systemId: 'radiation',
+    name: 'Solar proton flux (≥10 MeV)',
+    unit: 'pfu',
+    decimals: 1,
+    acquisition: 'sensor',
+    cadenceHours: 1,
+    display: { min: 0, max: 2500 },
+    // NOAA S-scale: S1 from 10 pfu, S3 from 1,000 pfu.
+    thresholds: { nominal: { min: 0, max: 9.99 }, caution: { min: 0, max: 999.99 } },
+    whyItMatters:
+      'A solar particle event can deliver in hours the dose of many ordinary days. Flux rises before the dose does, which leaves time to take shelter.',
+    howToMeasure: 'Read from the space weather feed and the vehicle particle detector. Values are protons at 10 MeV or more.',
+    guidance: {
+      caution: [
+        'Check the space weather alert and the forecast.',
+        'Postpone or end spacewalks and surface excursions.',
+        'Be ready to move to the storm shelter.',
+      ],
+      critical: [
+        'Move to the storm shelter now.',
+        'Reconfigure water and stowage mass as shielding.',
+        'Keep your personal dosimeter on and log the dose.',
+      ],
+    },
+    reference: 'NOAA Space Weather Scale for solar radiation storms: S1 from 10 pfu, S2 from 100, S3 from 1,000. An operational scale, not a NASA limit.',
   },
 };
 

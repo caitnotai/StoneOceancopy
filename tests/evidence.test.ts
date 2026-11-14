@@ -6,8 +6,15 @@ import { DETECT_KINDS, PROVENANCE_CLASSES, VERIFICATION_STATUSES } from '../src/
 
 describe('rules matrix', () => {
   it('has the ten conditions of the research report, with unique ids', () => {
-    expect(RULES).toHaveLength(10);
-    expect(new Set(RULES.map((r) => r.id)).size).toBe(10);
+    expect(RULES.filter((r) => r.origin !== 'project')).toHaveLength(10);
+    expect(new Set(RULES.map((r) => r.id)).size).toBe(RULES.length);
+  });
+
+  it('marks the one rule the project added, so it is never mistaken for the report', () => {
+    const added = RULES.filter((r) => r.origin === 'project');
+    expect(added.map((r) => r.id)).toEqual(['R-NUTRITION']);
+    expect(added[0].detect.nasaLimit).toBe(false);
+    expect(added[0].cautions.join(' ')).toMatch(/not part of the research report/);
   });
 
   it('covers the five HRP hazards', () => {
@@ -53,8 +60,8 @@ describe('NASA limits', () => {
   });
 
   it('keep the report values: ppCO2 3 mmHg; retinal thickness 20 and 55 um', () => {
-    expect(RULES.find((r) => r.id === 'R-CO2')?.detect.limits).toEqual({ metric: 'ppCo2OneHourMmHg', critical: 3 });
-    expect(RULES.find((r) => r.id === 'R-SANS')?.detect.limits).toEqual({ metric: 'deltaTrtUm', caution: 20, critical: 55 });
+    expect(RULES.find((r) => r.id === 'R-CO2')?.detect.limits).toEqual({ metric: 'ppCO2', caution: 3 });
+    expect(RULES.find((r) => r.id === 'R-SANS')?.detect.limits).toEqual({ metric: 'retinalThickness', caution: 20, critical: 55 });
   });
 });
 

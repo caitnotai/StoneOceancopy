@@ -336,5 +336,18 @@
     "located": true,
     "method": "URL responds",
     "checkedAt": "2026-11-14"
+  },
+  {
+    "id": "S-HRP-RISKS",
+    "title": "NASA HRP: Risks of Human Spaceflight",
+    "publisher": "NASA Human Research Program",
+    "url": "https://www.nasa.gov/hrp/risks/",
+    "doi": null,
+    "ntrsId": null,
+    "matchedTitle": "Risks of Human Spaceflight - NASA",
+    "year": "",
+    "located": true,
+    "method": "URL responds",
+    "checkedAt": "2026-11-14"
   }
 ]

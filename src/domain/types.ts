@@ -32,7 +32,10 @@ export type IndicatorId =
   | 'bodyTemp'
   | 'glucose'
   | 'calorieIntake'
-  | 'radiationDose';
+  | 'radiationDose'
+  | 'ppCO2'
+  | 'retinalThickness'
+  | 'protonFlux';
 
 /** NASA Human Research Program: the five hazards of human spaceflight. */
 export type HazardId = 'radiation' | 'isolation' | 'distance' | 'gravity' | 'environment';

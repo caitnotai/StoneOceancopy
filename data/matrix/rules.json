@@ -5,25 +5,62 @@
     "condition": "Spaceflight Associated Neuro-ocular Syndrome (SANS)",
     "hrrRisk": "Risk of Spaceflight Associated Neuro-ocular Syndrome",
     "systemId": "sensory",
-    "indicatorIds": ["visionChange"],
+    "indicatorIds": [
+      "retinalThickness",
+      "visionChange"
+    ],
     "incidence": "About 66% of long-duration crew show at least one early sign.",
     "detect": {
       "kind": "criterio_clinico_NASA",
       "nasaLimit": true,
       "label": "NASA clinical SANS criteria",
       "criterion": "Change in total peripapillary retinal thickness by OCT: 20 um or more is an early indication; 55 um or more and/or Frisen grade 1 or higher is clinically concerning.",
-      "limits": { "metric": "deltaTrtUm", "caution": 20, "critical": 55 }
+      "limits": {
+        "metric": "retinalThickness",
+        "caution": 20,
+        "critical": 55
+      }
     },
     "treat": [
-      { "text": "Stop vision-critical tasks if there is a visual deficit.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Run the OCT and vision tests; review cabin CO2, sleep and fluid shift.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Apply only a pre-approved mechanical countermeasure.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Loss of visual field or acuity: escalate to the flight surgeon.", "authorityLevel": 4, "requiresPreauthorization": false }
+      {
+        "text": "Stop vision-critical tasks if there is a visual deficit.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Run the OCT and vision tests; review cabin CO2, sleep and fluid shift.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Apply only a pre-approved mechanical countermeasure.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Loss of visual field or acuity: escalate to the flight surgeon.",
+        "authorityLevel": 4,
+        "requiresPreauthorization": false
+      }
     ],
-    "cautions": ["Lower body negative pressure is not a validated SANS treatment."],
+    "cautions": [
+      "Lower body negative pressure is not a validated SANS treatment."
+    ],
     "efficacy": "LBNP for SANS: NR as validated clinical efficacy; the HRR gap is open.",
-    "verify": { "criterion": "Retinal thickness stable or reduced, no Frisen progression, visual field and refraction within the individual baseline.", "metrics": ["deltaTrtUm", "visionChange"] },
-    "evidenceIds": ["E-SANS-PREVALENCE", "E-SANS-CRITERIA", "E-SANS-VAPER-SLEEP", "E-SANS-VAPER-CIRCADIAN", "E-SANS-LBNP-GAP"]
+    "verify": {
+      "criterion": "Retinal thickness stable or reduced, no Frisen progression, visual field and refraction within the individual baseline.",
+      "metrics": [
+        "retinalThickness",
+        "visionChange"
+      ]
+    },
+    "evidenceIds": [
+      "E-SANS-PREVALENCE",
+      "E-SANS-CRITERIA",
+      "E-SANS-VAPER-SLEEP",
+      "E-SANS-VAPER-CIRCADIAN",
+      "E-SANS-LBNP-GAP"
+    ]
   },
   {
     "id": "R-BONE",
@@ -31,7 +68,9 @@
     "condition": "Bone mineral density loss and fracture risk",
     "hrrRisk": "Risk of Bone Fracture due to Spaceflight-induced Changes to Bone",
     "systemId": "skeletal",
-    "indicatorIds": ["resistiveExercise"],
+    "indicatorIds": [
+      "resistiveExercise"
+    ],
     "incidence": "Not an acute incidence: typical loss of 0.8-1.2 %/month (DXA) at spine and hip.",
     "detect": {
       "kind": "baseline_individual",
@@ -40,14 +79,35 @@
       "criterion": "Trend of bone density, resorption markers and loading adherence against the crew member's own baseline. Standard Measures collects these data but publishes no yellow or red threshold."
     },
     "treat": [
-      { "text": "Prescribed resistive exercise programme (ARED).", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Nutrition and vitamin D per the medical plan.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Bisphosphonate only as part of a pre-authorized individual protocol.", "authorityLevel": 3, "requiresPreauthorization": true }
+      {
+        "text": "Prescribed resistive exercise programme (ARED).",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Nutrition and vitamin D per the medical plan.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Bisphosphonate only as part of a pre-authorized individual protocol.",
+        "authorityLevel": 3,
+        "requiresPreauthorization": true
+      }
     ],
     "cautions": [],
     "efficacy": "ARED: mean loss about 1.0 to 0.3-0.5 %/month; alendronate plus exercise (n=4): femoral neck -1.1 to -0.2 %/month.",
-    "verify": { "criterion": "Bone density trend stabilized; resorption markers and urinary calcium not rising; loading sessions completed.", "metrics": ["resistiveExercise"] },
-    "evidenceIds": ["E-BONE-LOSS", "E-BONE-ARED", "E-BONE-ALENDRONATE"]
+    "verify": {
+      "criterion": "Bone density trend stabilized; resorption markers and urinary calcium not rising; loading sessions completed.",
+      "metrics": [
+        "resistiveExercise"
+      ]
+    },
+    "evidenceIds": [
+      "E-BONE-LOSS",
+      "E-BONE-ARED",
+      "E-BONE-ALENDRONATE"
+    ]
   },
   {
     "id": "R-MUSCLE",
@@ -55,7 +115,9 @@
     "condition": "Loss of muscle mass, strength and fitness",
     "hrrRisk": "Risk of Reduced Cardiorespiratory and Musculoskeletal Fitness",
     "systemId": "muscular",
-    "indicatorIds": ["aerobicExercise"],
+    "indicatorIds": [
+      "aerobicExercise"
+    ],
     "incidence": "Calf volume -10 to -16% and thigh -4 to -7% in historical ISS data.",
     "detect": {
       "kind": "baseline_individual",
@@ -64,13 +126,29 @@
       "criterion": "Strength, muscle volume and exercise load against the crew member's own baseline and the operational task standards."
     },
     "treat": [
-      { "text": "Prescribed resistance and aerobic programme.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Progress loads only within the protocol.", "authorityLevel": 2, "requiresPreauthorization": false }
+      {
+        "text": "Prescribed resistance and aerobic programme.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Progress loads only within the protocol.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      }
     ],
     "cautions": [],
     "efficacy": "Current countermeasures reduce but do not eliminate losses; some astronauts keep 10-15% deficits.",
-    "verify": { "criterion": "Strength, muscle volume, aerobic capacity and functional task back in the individual target range.", "metrics": ["aerobicExercise"] },
-    "evidenceIds": ["E-MUSCLE-LOSS", "E-MUSCLE-RESIDUAL"]
+    "verify": {
+      "criterion": "Strength, muscle volume, aerobic capacity and functional task back in the individual target range.",
+      "metrics": [
+        "aerobicExercise"
+      ]
+    },
+    "evidenceIds": [
+      "E-MUSCLE-LOSS",
+      "E-MUSCLE-RESIDUAL"
+    ]
   },
   {
     "id": "R-ORTHO",
@@ -78,7 +156,10 @@
     "condition": "Cardiovascular adaptation and orthostatic intolerance",
     "hrrRisk": "Risk of Cardiovascular Adaptations",
     "systemId": "cardiovascular",
-    "indicatorIds": ["heartRate", "systolicBP"],
+    "indicatorIds": [
+      "heartRate",
+      "systolicBP"
+    ],
     "incidence": "About 30% after short flights; up to 83% after long-duration flights.",
     "detect": {
       "kind": "baseline_individual",
@@ -87,14 +168,37 @@
       "criterion": "Heart-rate and systolic-pressure response on standing or tilt against baseline. The Standard Measure tilt test (80 degrees, up to 15 minutes or presyncope) defines the measurement, not an alert threshold."
     },
     "treat": [
-      { "text": "Fluid and salt loading per the pre-approved protocol.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Wear the compression garments.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Lower body negative pressure when the protocol calls for it.", "authorityLevel": 2, "requiresPreauthorization": false }
+      {
+        "text": "Fluid and salt loading per the pre-approved protocol.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Wear the compression garments.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Lower body negative pressure when the protocol calls for it.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      }
     ],
     "cautions": [],
     "efficacy": "Salt and water: heart-rate response reduced 29%. Compression: heart-rate rise 11 vs 21 bpm and systolic +2 vs -9 mmHg.",
-    "verify": { "criterion": "Stand or tilt test completed without presyncope; systolic pressure sustained; heart rate near baseline.", "metrics": ["heartRate", "systolicBP"] },
-    "evidenceIds": ["E-ORTHO-INCIDENCE", "E-ORTHO-FLUID", "E-ORTHO-COMPRESSION", "E-ORTHO-LBNP"]
+    "verify": {
+      "criterion": "Stand or tilt test completed without presyncope; systolic pressure sustained; heart rate near baseline.",
+      "metrics": [
+        "heartRate",
+        "systolicBP"
+      ]
+    },
+    "evidenceIds": [
+      "E-ORTHO-INCIDENCE",
+      "E-ORTHO-FLUID",
+      "E-ORTHO-COMPRESSION",
+      "E-ORTHO-LBNP"
+    ]
   },
   {
     "id": "R-CO2",
@@ -102,25 +206,58 @@
     "condition": "Hypercapnia and CO2 headache",
     "hrrRisk": "Hostile closed environment: cabin atmosphere",
     "systemId": "respiratory",
-    "indicatorIds": [],
+    "indicatorIds": [
+      "ppCO2"
+    ],
     "incidence": "19 of 49 astronauts (about 38.7%) reported headache in an ISS series.",
     "detect": {
       "kind": "estandar_obligatorio",
       "nasaLimit": true,
       "label": "NASA-STD-3001 Vol. 2 [V2 6004]",
       "criterion": "One-hour average ppCO2 of 3 mmHg or less. A sustained rise against the local baseline, or headache and fatigue with it, counts as early warning.",
-      "limits": { "metric": "ppCo2OneHourMmHg", "critical": 3 }
+      "limits": {
+        "metric": "ppCO2",
+        "caution": 3
+      }
     },
     "treat": [
-      { "text": "Increase CO2 scrubbing and ventilation.", "authorityLevel": 1, "requiresPreauthorization": false },
-      { "text": "Leave the CO2 pocket.", "authorityLevel": 1, "requiresPreauthorization": false },
-      { "text": "Reduce metabolic load as the procedure allows.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Analgesia only per the medical checklist.", "authorityLevel": 3, "requiresPreauthorization": true }
+      {
+        "text": "Increase CO2 scrubbing and ventilation.",
+        "authorityLevel": 1,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Leave the CO2 pocket.",
+        "authorityLevel": 1,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Reduce metabolic load as the procedure allows.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Analgesia only per the medical checklist.",
+        "authorityLevel": 3,
+        "requiresPreauthorization": true
+      }
     ],
-    "cautions": ["2.5 mmHg as a 7-day mean is an epidemiological relation, not a NASA red limit."],
+    "cautions": [
+      "2.5 mmHg as a 7-day mean is an epidemiological relation, not a NASA red limit."
+    ],
     "efficacy": "Estimated headache risk under 1% at a 7-day mean below 2.5 mmHg; odds about double per +1 mmHg.",
-    "verify": { "criterion": "ppCO2 at or below 3 mmHg and falling; headache and fatigue resolved; heart rate and breathing at baseline.", "metrics": ["ppCo2OneHourMmHg", "heartRate"] },
-    "evidenceIds": ["E-CO2-STANDARD", "E-CO2-HEADACHE", "E-CO2-ANALOG"]
+    "verify": {
+      "criterion": "ppCO2 at or below 3 mmHg and falling; headache and fatigue resolved; heart rate and breathing at baseline.",
+      "metrics": [
+        "ppCO2",
+        "heartRate"
+      ]
+    },
+    "evidenceIds": [
+      "E-CO2-STANDARD",
+      "E-CO2-HEADACHE",
+      "E-CO2-ANALOG"
+    ]
   },
   {
     "id": "R-IMMUNE",
@@ -128,7 +265,9 @@
     "condition": "Altered immune response and latent virus reactivation",
     "hrrRisk": "Risk of Adverse Health Event Due to Altered Immune Response",
     "systemId": "immune",
-    "indicatorIds": ["bodyTemp"],
+    "indicatorIds": [
+      "bodyTemp"
+    ],
     "incidence": "VZV reactivation in about 50% of astronauts in one long-duration series.",
     "detect": {
       "kind": "baseline_individual",
@@ -137,14 +276,35 @@
       "criterion": "Temperature, symptoms, skin findings and available blood markers against the crew member's own baseline. Standard Measures records immune status but sets no clinical threshold."
     },
     "treat": [
-      { "text": "Monitor symptoms, temperature, skin and the blood markers available.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Isolation and hygiene measures.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Antiviral only if pre-authorized for a defined diagnosis.", "authorityLevel": 3, "requiresPreauthorization": true }
+      {
+        "text": "Monitor symptoms, temperature, skin and the blood markers available.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Isolation and hygiene measures.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Antiviral only if pre-authorized for a defined diagnosis.",
+        "authorityLevel": 3,
+        "requiresPreauthorization": true
+      }
     ],
     "cautions": [],
     "efficacy": "Universal preventive pharmacological countermeasure: NR; research remains open.",
-    "verify": { "criterion": "Afebrile, symptoms resolved, markers back in the individual range, no progression of rash or infection.", "metrics": ["bodyTemp"] },
-    "evidenceIds": ["E-IMMUNE-SHUTTLE", "E-IMMUNE-LONG", "E-IMMUNE-GAP"]
+    "verify": {
+      "criterion": "Afebrile, symptoms resolved, markers back in the individual range, no progression of rash or infection.",
+      "metrics": [
+        "bodyTemp"
+      ]
+    },
+    "evidenceIds": [
+      "E-IMMUNE-SHUTTLE",
+      "E-IMMUNE-LONG",
+      "E-IMMUNE-GAP"
+    ]
   },
   {
     "id": "R-SLEEP",
@@ -152,7 +312,10 @@
     "condition": "Sleep loss, circadian disruption and cognitive decline",
     "hrrRisk": "Risk of Inadequate Sleep and Irregular Schedules",
     "systemId": "neuro",
-    "indicatorIds": ["sleepHours", "mood"],
+    "indicatorIds": [
+      "sleepHours",
+      "mood"
+    ],
     "incidence": "No single clinical incidence. Standard Measures (n=19): 7.33 +/- 1.16 h in flight vs 7.87 +/- 1.10 h before.",
     "detect": {
       "kind": "baseline_individual",
@@ -161,15 +324,43 @@
       "criterion": "Sleep duration and efficiency, vigilance testing and subjective alertness against the individual envelope. The PVT is validated as a measure, but no NASA alert threshold exists."
     },
     "treat": [
-      { "text": "Reschedule sleep and work periods.", "authorityLevel": 1, "requiresPreauthorization": false },
-      { "text": "Use the circadian lighting schedule.", "authorityLevel": 1, "requiresPreauthorization": false },
-      { "text": "Reduce workload per the plan.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Sleep medication only within the medical protocol.", "authorityLevel": 3, "requiresPreauthorization": true }
+      {
+        "text": "Reschedule sleep and work periods.",
+        "authorityLevel": 1,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Use the circadian lighting schedule.",
+        "authorityLevel": 1,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Reduce workload per the plan.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Sleep medication only within the medical protocol.",
+        "authorityLevel": 3,
+        "requiresPreauthorization": true
+      }
     ],
     "cautions": [],
     "efficacy": "Lighting and schedule are active countermeasures; a universal clinical percentage is NR.",
-    "verify": { "criterion": "Vigilance and cognition back inside the individual envelope; sleep duration, efficiency and subjective alertness recovered.", "metrics": ["sleepHours", "mood"] },
-    "evidenceIds": ["E-SLEEP-STDMEASURES", "E-SLEEP-COGNITION", "E-SLEEP-PVT-GAP", "E-SANS-VAPER-SLEEP", "E-SANS-VAPER-CIRCADIAN"]
+    "verify": {
+      "criterion": "Vigilance and cognition back inside the individual envelope; sleep duration, efficiency and subjective alertness recovered.",
+      "metrics": [
+        "sleepHours",
+        "mood"
+      ]
+    },
+    "evidenceIds": [
+      "E-SLEEP-STDMEASURES",
+      "E-SLEEP-COGNITION",
+      "E-SLEEP-PVT-GAP",
+      "E-SANS-VAPER-SLEEP",
+      "E-SANS-VAPER-CIRCADIAN"
+    ]
   },
   {
     "id": "R-RADIATION",
@@ -177,7 +368,10 @@
     "condition": "Radiation exposure: solar particle events and cumulative dose",
     "hrrRisk": "Risk of Radiation Carcinogenesis",
     "systemId": "radiation",
-    "indicatorIds": ["radiationDose"],
+    "indicatorIds": [
+      "protonFlux",
+      "radiationDose"
+    ],
     "incidence": "Human incidence for exploration: NR. Observed environment: about 1.84 mSv/day in transit and 0.7 mSv/day on the Martian surface.",
     "detect": {
       "kind": "limite_de_programa",
@@ -186,14 +380,41 @@
       "criterion": "Solar particle event detected from the flux of protons at 10 MeV or more; cumulative dose, its rate of increase and the margin against a configurable mission budget."
     },
     "treat": [
-      { "text": "Solar particle event: move to the storm shelter.", "authorityLevel": 1, "requiresPreauthorization": false },
-      { "text": "Reconfigure mass and water as shielding.", "authorityLevel": 1, "requiresPreauthorization": false },
-      { "text": "Keep the personal dosimeter on continuously.", "authorityLevel": 2, "requiresPreauthorization": false }
+      {
+        "text": "Solar particle event: move to the storm shelter.",
+        "authorityLevel": 1,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Reconfigure mass and water as shielding.",
+        "authorityLevel": 1,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Keep the personal dosimeter on continuously.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      }
     ],
-    "cautions": ["Radioprotective drugs are not for autonomous use: no experimental radioprotector is self-administered."],
+    "cautions": [
+      "Radioprotective drugs are not for autonomous use: no experimental radioprotector is self-administered."
+    ],
     "efficacy": "Common shielding: about 50% dose reduction for SPE and 7% for GCR. AstroRad: 58.2% and 36.9% modeled for two historical events.",
-    "verify": { "criterion": "Dose rate falls after sheltering; cumulative dose stays within the budget; no acute radiation syndrome.", "metrics": ["radiationDose"] },
-    "evidenceIds": ["E-RAD-TRANSIT", "E-RAD-SURFACE", "E-RAD-ARTEMIS", "E-RAD-SHIELDING", "E-RAD-ASTRORAD", "E-RAD-NO-DAILY-LIMIT"]
+    "verify": {
+      "criterion": "Dose rate falls after sheltering; cumulative dose stays within the budget; no acute radiation syndrome.",
+      "metrics": [
+        "protonFlux",
+        "radiationDose"
+      ]
+    },
+    "evidenceIds": [
+      "E-RAD-TRANSIT",
+      "E-RAD-SURFACE",
+      "E-RAD-ARTEMIS",
+      "E-RAD-SHIELDING",
+      "E-RAD-ASTRORAD",
+      "E-RAD-NO-DAILY-LIMIT"
+    ]
   },
   {
     "id": "R-MEDICAL",
@@ -201,7 +422,9 @@
     "condition": "Adverse medical conditions without real-time ground support",
     "hrrRisk": "ExMC gap Medical-101",
     "systemId": null,
-    "indicatorIds": [],
+    "indicatorIds": [
+      "dizziness"
+    ],
     "incidence": "No percentage: the Integrated Medical Model gives expected events per simulated mission.",
     "detect": {
       "kind": "baseline_individual",
@@ -210,14 +433,40 @@
       "criterion": "Vital signs and objective findings for the suspected condition. Standard Measures must not be read as a diagnosis."
     },
     "treat": [
-      { "text": "Follow the medical checklist with the Crew Medical Officer.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Use the differential algorithm and the resources on board.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Arrhythmia, sepsis, airway compromise, shock, severe toxic exposure, major trauma, neurological deficit or SANS with loss of vision: emergency mode, pre-approved protocols only, and request the medical link as soon as communications allow.", "authorityLevel": 4, "requiresPreauthorization": false }
+      {
+        "text": "Follow the medical checklist with the Crew Medical Officer.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Use the differential algorithm and the resources on board.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Arrhythmia, sepsis, airway compromise, shock, severe toxic exposure, major trauma, neurological deficit or SANS with loss of vision: emergency mode, pre-approved protocols only, and request the medical link as soon as communications allow.",
+        "authorityLevel": 4,
+        "requiresPreauthorization": false
+      }
     ],
-    "cautions": ["In emergency mode the software guides approved protocols; it does not try treatments or change doses outside the authorized medical order."],
+    "cautions": [
+      "In emergency mode the software guides approved protocols; it does not try treatments or change doses outside the authorized medical order."
+    ],
     "efficacy": "Decision support, not a substitute for the Crew Medical Officer; no single published efficacy figure.",
-    "verify": { "criterion": "Vital signs and objective findings normalize; the condition leaves the escalation criteria; no functional decline.", "metrics": ["heartRate", "systolicBP", "spo2", "bodyTemp"] },
-    "evidenceIds": ["E-MED-IMM", "E-MED-IMM-VALIDATION", "E-MED-AMO"]
+    "verify": {
+      "criterion": "Vital signs and objective findings normalize; the condition leaves the escalation criteria; no functional decline.",
+      "metrics": [
+        "heartRate",
+        "systolicBP",
+        "spo2",
+        "bodyTemp"
+      ]
+    },
+    "evidenceIds": [
+      "E-MED-IMM",
+      "E-MED-IMM-VALIDATION",
+      "E-MED-AMO"
+    ]
   },
   {
     "id": "R-MINOR",
@@ -225,7 +474,9 @@
     "condition": "Skin rash, respiratory infection and minor trauma",
     "hrrRisk": "Hostile closed environment: common in-flight conditions",
     "systemId": "immune",
-    "indicatorIds": ["bodyTemp", "spo2"],
+    "indicatorIds": [
+      "spo2"
+    ],
     "incidence": "Simulated, not observed: rash 9.83, respiratory infection 3.46 and skin abrasion 9.86 events per simulated mission.",
     "detect": {
       "kind": "baseline_individual",
@@ -234,12 +485,73 @@
       "criterion": "Temperature, pain, lesion extent, SpO2 and breathing against the crew member's own baseline."
     },
     "treat": [
-      { "text": "Examination, hygiene and wound care per the medical checklist.", "authorityLevel": 2, "requiresPreauthorization": false },
-      { "text": "Medication and procedures only per the approved protocol.", "authorityLevel": 3, "requiresPreauthorization": true }
+      {
+        "text": "Examination, hygiene and wound care per the medical checklist.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Medication and procedures only per the approved protocol.",
+        "authorityLevel": 3,
+        "requiresPreauthorization": true
+      }
     ],
     "cautions": [],
     "efficacy": "Aggregate efficacy: NR.",
-    "verify": { "criterion": "Temperature, pain, lesion extent, SpO2 and breathing back to baseline; no systemic progression.", "metrics": ["bodyTemp", "spo2"] },
-    "evidenceIds": ["E-MED-IMM"]
+    "verify": {
+      "criterion": "Temperature, pain, lesion extent, SpO2 and breathing back to baseline; no systemic progression.",
+      "metrics": [
+        "bodyTemp",
+        "spo2"
+      ]
+    },
+    "evidenceIds": [
+      "E-MED-IMM"
+    ]
+  },
+  {
+    "id": "R-NUTRITION",
+    "origin": "project",
+    "hazard": "distance",
+    "condition": "Inadequate food and nutrition",
+    "hrrRisk": "Risk of Inadequate Food and Nutrition",
+    "systemId": "metabolic",
+    "indicatorIds": [
+      "glucose",
+      "calorieIntake"
+    ],
+    "incidence": "Not in the research report matrix. NASA lists it as a spaceflight risk without a published incidence.",
+    "detect": {
+      "kind": "baseline_individual",
+      "nasaLimit": false,
+      "label": "Individual baseline (not a NASA limit)",
+      "criterion": "Energy intake and blood glucose against the crew member's own requirement and baseline. NASA publishes no alert threshold."
+    },
+    "treat": [
+      {
+        "text": "Add planned snacks and energy-dense items from the pantry.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      },
+      {
+        "text": "Review the menu with the Crew Medical Officer.",
+        "authorityLevel": 2,
+        "requiresPreauthorization": false
+      }
+    ],
+    "cautions": [
+      "This rule was added by the project to cover existing indicators; it is not part of the research report."
+    ],
+    "efficacy": "NR.",
+    "verify": {
+      "criterion": "Energy intake back at the individual target; glucose and body mass stable.",
+      "metrics": [
+        "calorieIntake",
+        "glucose"
+      ]
+    },
+    "evidenceIds": [
+      "E-NUTRITION-RISK"
+    ]
   }
 ]
