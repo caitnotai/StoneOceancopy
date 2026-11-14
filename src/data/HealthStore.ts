@@ -1,6 +1,7 @@
 import { ENVIRONMENTS } from '../domain/catalog/environments';
-import { INDICATORS } from '../domain/catalog/indicators';
-import { evaluateAll, thresholdsFor } from '../domain/engine/evaluate';
+import { INDICATOR_LIST, INDICATORS } from '../domain/catalog/indicators';
+import { evaluateAll, thresholdsFor, type MonitoringContext } from '../domain/engine/evaluate';
+import { fitIndividualBaseline, usesIndividualBaseline, type IndividualBaseline } from '../domain/engine/monitor';
 import { verifyIntervention, type Intervention } from '../domain/engine/verify';
 import { INDICATOR_RULES } from '../domain/evidence/indicatorRules';
 import type { AuthorityLevel } from '../domain/evidence/types';
@@ -56,6 +57,8 @@ export class HealthStore implements ReadingSink {
   private readonly interventionLog: Intervention[] = [];
   private plan: MedicalPlan = { ...DEFAULT_MEDICAL_PLAN };
   private weather: SpaceWeather | null = null;
+  /** Individual baselines, fitted once per indicator and then frozen. */
+  private readonly baselines = new Map<IndicatorId, IndividualBaseline>();
 
   constructor(environment: EnvironmentId = 'iss') {
     this.env = ENVIRONMENTS[environment];
@@ -93,6 +96,10 @@ export class HealthStore implements ReadingSink {
   /** Real space weather (NOAA SWPC, NASA DONKI); null until it has been loaded. */
   get spaceWeather(): SpaceWeather | null {
     return this.weather;
+  }
+  /** The crew member's own baseline for an indicator, once enough days have been recorded. */
+  baselineOf(id: IndicatorId): IndividualBaseline | undefined {
+    return this.baselines.get(id);
   }
   /** The most recent intervention for an indicator, if any. */
   latestIntervention(id: IndicatorId): Intervention | undefined {
@@ -155,7 +162,8 @@ export class HealthStore implements ReadingSink {
       stepText,
       authorityLevel,
       startedAt: this.now,
-      valueBefore: evaluation?.latest?.value ?? null,
+      // Against the baseline the comparison is between days, so the day's value is what is recorded.
+      valueBefore: evaluation?.drift?.current?.value ?? evaluation?.latest?.value ?? null,
       statusBefore: evaluation?.status ?? 'unknown',
       outcome: 'pending',
       valueAfter: null,
@@ -163,6 +171,8 @@ export class HealthStore implements ReadingSink {
     };
     this.interventionLog.push(intervention);
     this.events.emit('interventions', this.interventionLog);
+    // The drift detectors restart at the treatment, so the status has to be worked out again.
+    this.recompute();
     return intervention;
   }
 
@@ -179,6 +189,7 @@ export class HealthStore implements ReadingSink {
 
   reset(now: MissionMinutes): void {
     this.readings.clear();
+    this.baselines.clear();
     this.interventionLog.length = 0;
     this.now = now;
     this.events.emit('interventions', this.interventionLog);
@@ -186,9 +197,26 @@ export class HealthStore implements ReadingSink {
   }
 
   private recompute(): void {
-    this.current = evaluateAll(this.readings, this.env, this.now);
+    this.current = evaluateAll(this.readings, this.env, this.now, this.monitoring());
     this.verifyPending();
     this.events.emit('data', this.current);
+  }
+
+  /** Fits any baseline that has just become possible and pairs each with its last treatment. */
+  private monitoring(): Map<IndicatorId, MonitoringContext> {
+    const context = new Map<IndicatorId, MonitoringContext>();
+    for (const def of INDICATOR_LIST) {
+      if (!usesIndividualBaseline(def.id)) continue;
+      let baseline = this.baselines.get(def.id);
+      if (!baseline) {
+        const fitted = fitIndividualBaseline(def, this.history(def.id), this.now);
+        if (!fitted) continue;
+        baseline = fitted;
+        this.baselines.set(def.id, fitted);
+      }
+      context.set(def.id, { baseline, resetAt: this.latestIntervention(def.id)?.startedAt ?? null });
+    }
+    return context;
   }
 
   private verifyPending(): void {
@@ -196,7 +224,7 @@ export class HealthStore implements ReadingSink {
     for (const intervention of this.interventionLog) {
       if (intervention.outcome !== 'pending') continue;
       const def = INDICATORS[intervention.indicatorId];
-      const result = verifyIntervention(intervention, def, this.history(def.id), thresholdsFor(def, this.env), this.now);
+      const result = verifyIntervention(intervention, def, this.history(def.id), thresholdsFor(def, this.env), this.now, this.baselines.get(def.id));
       if (result.outcome !== 'pending') {
         Object.assign(intervention, result);
         changed = true;

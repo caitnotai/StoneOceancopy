@@ -118,6 +118,42 @@ export interface EnvironmentDef {
   thresholdOverrides?: Partial<Record<IndicatorId, Thresholds>>;
 }
 
+/** The rule that put an indicator out of its nominal status, when it is judged against the baseline. */
+export type DriftTrigger = 'single_value' | 'ewma' | 'cusum';
+
+/** How an indicator stands against the person's own baseline. */
+export interface DriftSummary {
+  status: HealthStatus;
+  /** Rule behind a caution or critical status; null when nominal. */
+  trigger: DriftTrigger | null;
+  /** Which direction of change counts as a problem. */
+  direction: 'low' | 'high' | 'both';
+  baselineMean: number;
+  /** Predictive standard deviation of one daily value. */
+  baselineSd: number;
+  baselineDays: number;
+  baselineUntil: MissionMinutes;
+  /** Where 95% of the person's days fall, on the side that counts as a problem. */
+  usualRange: Range;
+  /** Single-value limits as bands: beyond `nominal` is caution, beyond `caution` is critical. */
+  bands: Thresholds;
+  /** The value now: latest daily measurement, or the mean of the last 24 hours for a sensor. */
+  current: { t: MissionMinutes; value: number; z: number } | null;
+  singleValueCautionLimit: number;
+  singleValueCriticalLimit: number;
+  /** Daily values since the baseline (or since the last treatment), with their z-scores. */
+  series: { t: MissionMinutes; value: number; z: number }[];
+  ewma: number;
+  ewmaCautionLimit: number;
+  ewmaCriticalLimit: number;
+  /** CUSUM sum in the adverse direction. */
+  cusum: number;
+  cusumCautionLimit: number;
+  cusumCriticalLimit: number;
+  /** True after a treatment, until a first value has been measured since. */
+  awaitingFirstValue: boolean;
+}
+
 export interface IndicatorEvaluation {
   def: IndicatorDef;
   latest: Reading | null;
@@ -128,6 +164,8 @@ export interface IndicatorEvaluation {
   trendPerDay: number | null;
   /** True when the trend projects a worse status within the look-ahead window. */
   worsening: boolean;
+  /** Present when the status comes from the individual baseline instead of a fixed range. */
+  drift?: DriftSummary;
 }
 
 export interface SystemEvaluation {

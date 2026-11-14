@@ -40,9 +40,10 @@ interface IndicatorRule {
 /**
  * Indicator -> rule. Kept apart from the indicator catalog so that catalog keeps its shape.
  *
- * Where NASA publishes no limit, the rule calls for the individual baseline. Until the
- * baseline engine supplies one, those indicators fall back to the illustrative terrestrial
- * range and are labeled as such: `rango_ilustrativo`.
+ * Where NASA publishes no limit, the rule calls for the individual baseline. The basis
+ * recorded here is the fallback used until the person has a baseline (14 recorded days):
+ * the illustrative terrestrial range, labeled as such. Once the baseline exists,
+ * `provenanceOf(id, true)` reports `baseline_individual` instead.
  */
 export const INDICATOR_RULES: Record<IndicatorId, IndicatorRule> = {
   ppCO2: { ruleId: 'R-CO2', basis: 'estandar_obligatorio' },
@@ -76,9 +77,12 @@ export interface AlertProvenance {
   source: Source;
 }
 
-/** Provenance of the alert an indicator can raise. Throws if the data is incomplete. */
-export function provenanceOf(indicatorId: IndicatorId): AlertProvenance {
-  const link = INDICATOR_RULES[indicatorId];
+/**
+ * Provenance of the alert an indicator can raise. Throws if the data is incomplete.
+ * @param againstBaseline true when the indicator is being judged against the individual baseline
+ */
+export function provenanceOf(indicatorId: IndicatorId, againstBaseline = false): AlertProvenance {
+  const link = againstBaseline ? { ...INDICATOR_RULES[indicatorId], basis: 'baseline_individual' as const } : INDICATOR_RULES[indicatorId];
   const rule = ruleById(link.ruleId);
   const evidence = rule ? primaryEvidence(rule) : undefined;
   if (!rule || !evidence) throw new Error(`Indicator ${indicatorId} has no rule with evidence (${link.ruleId})`);

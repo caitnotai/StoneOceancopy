@@ -154,9 +154,35 @@ describe('API: treat and verify', () => {
 
   it('accepts a manual measurement and reflects it in the state', () => {
     const runtime = new MissionRuntime();
+    // Mood is judged against this person's own baseline (about 7.7): 3 is far below it, 1 is extreme.
     expect(send(runtime, 'POST', '/measurements', { indicatorId: 'mood', value: 3 }).status).toBe(201);
-    const neuro = get(runtime, `/state/${CREW_ID}`).body.systems.find((s: Json) => s.id === 'neuro');
-    expect(neuro.status).toBe('critical');
-    expect(neuro.indicators.find((i: Json) => i.id === 'mood').value).toBe(3);
+    const neuroAfter = (): Json => get(runtime, `/state/${CREW_ID}`).body.systems.find((s: Json) => s.id === 'neuro');
+    expect(neuroAfter().status).not.toBe('nominal');
+    expect(neuroAfter().indicators.find((i: Json) => i.id === 'mood').value).toBe(3);
+    expect(send(runtime, 'POST', '/measurements', { indicatorId: 'mood', value: 1 }).status).toBe(201);
+    expect(neuroAfter().status).toBe('critical');
+  });
+
+  it('reports the individual baseline behind every indicator judged against it', () => {
+    const runtime = new MissionRuntime();
+    const indicators: Json[] = get(runtime, `/state/${CREW_ID}`).body.systems.flatMap((s: Json) => s.indicators);
+    const heart = indicators.find((i) => i.id === 'heartRate')!;
+    expect(heart).toMatchObject({ thresholdBasis: 'baseline_individual', nasaLimit: false });
+    expect(heart.baseline).toMatchObject({ days: 14, adverseDirection: 'both', trigger: null, awaitingFirstValue: false });
+    expect(heart.baseline.usualRange.min).toBeLessThan(heart.baseline.mean);
+    expect(heart.baseline.rules.singleValue.cautionLimit).toBeGreaterThan(4);
+    // An open end of a range is null, never a number JSON cannot carry.
+    expect(indicators.find((i) => i.id === 'sleepHours')!.baseline.usualRange.max).toBeNull();
+    // The two NASA limits keep their own basis and have no baseline.
+    expect(indicators.find((i) => i.id === 'ppCO2')).toMatchObject({ thresholdBasis: 'estandar_obligatorio', nasaLimit: true, baseline: null });
+    expect(indicators.find((i) => i.id === 'retinalThickness')).toMatchObject({ thresholdBasis: 'criterio_clinico_NASA', baseline: null });
+
+    send(runtime, 'POST', '/measurements', { indicatorId: 'mood', value: 1 });
+    const alert = get(runtime, '/alerts').body.alerts.find((a: Json) => a.indicatorId === 'mood');
+    expect(alert).toMatchObject({ thresholdBasis: 'baseline_individual', nasaLimit: false });
+    expect(alert.basisLabel).toMatch(/Individual baseline · not a NASA limit/);
+    expect(alert.baseline.trigger).toBe('single_value');
+    expect(alert.provenance_class).toBeTruthy();
+    expect(alert.source.title).toBeTruthy();
   });
 });

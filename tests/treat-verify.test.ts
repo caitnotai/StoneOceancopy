@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { HISTORY_DAYS } from '../src/config';
 import { HealthStore } from '../src/data/HealthStore';
 import { MissionClock } from '../src/data/MissionClock';
 import { scenarioById } from '../src/data/sources/scenarios';
@@ -91,7 +92,7 @@ describe('detect, treat, verify end to end (simulated)', () => {
     const clock = new MissionClock(44 * DAY + 480);
     const simulator = new SimulatedSource(clock, () => store.environment);
     simulator.connect(store);
-    simulator.seedHistory(14);
+    simulator.seedHistory(HISTORY_DAYS);
     const run = (hours: number): void => {
       for (let step = 0; step < hours; step++) {
         const previous = clock.now;
@@ -132,6 +133,29 @@ describe('detect, treat, verify end to end (simulated)', () => {
     const result = store.latestIntervention('ppCO2')!;
     expect(result.outcome).toBe('not_verified');
     expect(result.valueAfter).toBeGreaterThan(3);
+  });
+
+  it('fever against the individual baseline: detected, treated, verified by the 24-hour mean', () => {
+    const { store, simulator, run, statusOf } = mission();
+    simulator.setScenario(scenarioById('infection'));
+    run(24);
+    expect(statusOf('bodyTemp')).toBe('critical'); // detect: far above this person's own temperature
+
+    const started = store.startIntervention('bodyTemp', 'Rest and drink fluids.', 2); // treat
+    simulator.applyCountermeasure('bodyTemp');
+    expect(started).toMatchObject({ ruleId: 'R-IMMUNE', statusBefore: 'critical', outcome: 'pending' });
+    expect(started.valueBefore).toBeGreaterThan(37.2); // the mean of the last 24 hours, not one reading
+
+    run(12);
+    // Half a day is not a value comparable with the baseline: nothing is closed and the alert stands.
+    expect(store.latestIntervention('bodyTemp')?.outcome).toBe('pending');
+    expect(statusOf('bodyTemp')).toBe('critical');
+
+    run(60);
+    const closed = store.latestIntervention('bodyTemp')!; // verify
+    expect(closed.outcome).toBe('verified');
+    expect(closed.valueAfter).toBeLessThan(37.2);
+    expect(statusOf('bodyTemp')).toBe('nominal');
   });
 
   it('restarting the mission clears the intervention log', () => {

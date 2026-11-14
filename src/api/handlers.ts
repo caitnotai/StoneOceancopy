@@ -60,8 +60,34 @@ function evidenceRows(filter: (id: string) => boolean = () => true) {
   });
 }
 
+/** JSON has no infinity: an open end of a range is null. */
+const finite = (value: number): number | null => (Number.isFinite(value) ? value : null);
+
+/** How the indicator stands against the person's own baseline; null while it is judged by a fixed range. */
+function baselineView(i: IndicatorEvaluation) {
+  const d = i.drift;
+  if (!d) return null;
+  return {
+    mean: d.baselineMean,
+    sd: d.baselineSd,
+    days: d.baselineDays,
+    untilMin: d.baselineUntil,
+    adverseDirection: d.direction,
+    usualRange: { min: finite(d.usualRange.min), max: finite(d.usualRange.max) },
+    current: d.current ? { value: d.current.value, z: d.current.z, measuredAtMin: d.current.t } : null,
+    rules: {
+      singleValue: { z: d.current?.z ?? null, cautionLimit: d.singleValueCautionLimit, criticalLimit: d.singleValueCriticalLimit },
+      ewma: { value: d.ewma, cautionLimit: d.ewmaCautionLimit, criticalLimit: d.ewmaCriticalLimit },
+      cusum: { value: d.cusum, cautionLimit: d.cusumCautionLimit, criticalLimit: d.cusumCriticalLimit },
+    },
+    trigger: d.trigger,
+    awaitingFirstValue: d.awaitingFirstValue,
+    daysMonitored: d.series.length,
+  };
+}
+
 function indicatorView(i: IndicatorEvaluation) {
-  const provenance = provenanceOf(i.def.id);
+  const provenance = provenanceOf(i.def.id, Boolean(i.drift));
   return {
     id: i.def.id,
     name: i.def.name,
@@ -75,6 +101,7 @@ function indicatorView(i: IndicatorEvaluation) {
     ruleId: provenance.rule.id,
     thresholdBasis: provenance.basis,
     nasaLimit: provenance.nasaLimit,
+    baseline: baselineView(i),
   };
 }
 
@@ -85,7 +112,7 @@ function alerts(runtime: MissionRuntime) {
     .filter((i) => severity(i.status) >= severity('caution'))
     .sort((a, b) => severity(b.status) - severity(a.status))
     .map((i) => {
-      const provenance = provenanceOf(i.def.id);
+      const provenance = provenanceOf(i.def.id, Boolean(i.drift));
       const status = i.status as 'caution' | 'critical';
       return {
         crewId: CREW_ID,
@@ -100,6 +127,7 @@ function alerts(runtime: MissionRuntime) {
         thresholdBasis: provenance.basis,
         basisLabel: provenance.basisLabel,
         nasaLimit: provenance.nasaLimit,
+        baseline: baselineView(i),
         provenance_class: provenance.evidence.provenanceClass,
         evidenceId: provenance.evidence.id,
         source: { id: provenance.source.id, title: provenance.source.matchedTitle ?? provenance.source.title, url: provenance.source.url },
