@@ -12,7 +12,7 @@
 //   sin_verificar      no source could be located
 //
 // Data provided by NASA STI Program (NTRS) and Crossref.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [matrixDir, csvFile] = process.argv.slice(2);
@@ -25,6 +25,11 @@ const sources = read('sources.json');
 const evidence = read('evidence.json');
 const HEADERS = { 'user-agent': 'health-monitoring-prototype/0.1', accept: 'application/json' };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Results of the previous run. A source that was located before and does not answer today
+// (a network hiccup, a rate limit) keeps its earlier result instead of being downgraded.
+const previousSources = existsSync(join(matrixDir, 'sources.resolved.json')) ? read('sources.resolved.json') : [];
+const previousStatus = existsSync(join(matrixDir, 'verification.json')) ? read('verification.json') : {};
 
 async function fromNtrs({ query, titleMatch, abstractMatch }) {
   const response = await fetch('https://ntrs.nasa.gov/api/citations/search', {
@@ -110,8 +115,8 @@ for (const source of sources) {
   for (const candidate of source.candidates) {
     try {
       found = await LOOKUP[candidate.kind](candidate);
-      // Crossref and NTRS occasionally drop a request: one retry before giving up.
-      if (!found && candidate.kind !== 'url') {
+      // Any of these services occasionally drops a request: one retry before giving up.
+      if (!found) {
         await sleep(1500);
         found = await LOOKUP[candidate.kind](candidate);
       }
@@ -120,6 +125,10 @@ for (const source of sources) {
     }
     await sleep(350);
     if (found) break;
+  }
+  const earlier = previousSources.find((s) => s.id === source.id && s.located);
+  if (!found && earlier) {
+    found = { method: earlier.method, url: earlier.url, ntrsId: earlier.ntrsId, doi: earlier.doi, matchedTitle: earlier.matchedTitle, year: earlier.year ?? '', abstract: '', kept: true };
   }
   located.set(source.id, found);
   console.log(`${found ? 'found  ' : 'MISSING'} ${source.id.padEnd(22)} ${found ? `${found.method}: ${found.matchedTitle.slice(0, 80)}` : ''}`);
@@ -132,7 +141,9 @@ const rows = evidence.map((item) => {
   const terms = item.checkTerms ?? [];
   const haystack = (found?.abstract ?? '').replace(/\s+/g, ' ');
   const matched = terms.filter((term) => haystack.includes(term));
-  const status = !found ? 'sin_verificar' : terms.length > 0 && matched.length === terms.length ? 'verificado' : 'fuente_localizada';
+  let status = !found ? 'sin_verificar' : terms.length > 0 && matched.length === terms.length ? 'verificado' : 'fuente_localizada';
+  // Without today's abstract the figures cannot be re-checked: keep what the last run found.
+  if (found?.kept && previousStatus[item.id]?.status) status = previousStatus[item.id].status;
   const note = !found
     ? 'No source located automatically; needs a manual search.'
     : status === 'verificado'

@@ -349,5 +349,31 @@
     "located": true,
     "method": "URL responds",
     "checkedAt": "2026-11-14"
+  },
+  {
+    "id": "S-RAD-LUNAR",
+    "title": "First measurements of the radiation dose on the lunar surface",
+    "publisher": "Science Advances",
+    "url": "https://doi.org/10.1126/sciadv.aaz1334",
+    "doi": "10.1126/sciadv.aaz1334",
+    "ntrsId": null,
+    "matchedTitle": "First measurements of the radiation dose on the lunar surface (Science Advances)",
+    "year": "2020",
+    "located": true,
+    "method": "DOI resolved by Crossref",
+    "checkedAt": "2026-11-14"
+  },
+  {
+    "id": "S-RAD-ISS",
+    "title": "Typical crew dose rate on the International Space Station (source not located)",
+    "publisher": "not located",
+    "url": null,
+    "doi": null,
+    "ntrsId": null,
+    "matchedTitle": null,
+    "year": null,
+    "located": false,
+    "method": null,
+    "checkedAt": "2026-11-14"
   }
 ]

@@ -25,5 +25,7 @@
   {"id":"S-HRR","title":"NASA Human Research Roadmap (risks and gaps)","publisher":"NASA Human Research Program","candidates":[{"kind":"url","url":"https://humanresearchroadmap.nasa.gov/"}]},
   {"id":"S-HRP-HAZARDS","title":"NASA HRP: 5 Hazards of Human Spaceflight","publisher":"NASA Human Research Program","candidates":[{"kind":"url","url":"https://www.nasa.gov/hrp/hazards/"}]},
   {"id":"S-NOAA-SCALES","title":"NOAA Space Weather Scales","publisher":"NOAA SWPC","candidates":[{"kind":"url","url":"https://www.swpc.noaa.gov/noaa-scales-explanation"}]},
-  {"id":"S-HRP-RISKS","title":"NASA HRP: Risks of Human Spaceflight","publisher":"NASA Human Research Program","candidates":[{"kind":"url","url":"https://www.nasa.gov/hrp/risks/"}]}
+  {"id":"S-HRP-RISKS","title":"NASA HRP: Risks of Human Spaceflight","publisher":"NASA Human Research Program","candidates":[{"kind":"url","url":"https://www.nasa.gov/hrp/risks/"}]},
+  {"id":"S-RAD-LUNAR","title":"First measurements of the radiation dose on the lunar surface","publisher":"Science Advances","candidates":[{"kind":"doi","doi":"10.1126/sciadv.aaz1334","titleMatch":"radiation dose on the lunar surface"}]},
+  {"id":"S-RAD-ISS","title":"Typical crew dose rate on the International Space Station (source not located)","publisher":"not located","candidates":[]}
 ]

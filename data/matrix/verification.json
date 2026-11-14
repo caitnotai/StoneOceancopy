@@ -196,5 +196,17 @@
     "method": "URL responds",
     "checkedAt": "2026-11-14",
     "note": "Source located; this claim has no single figure to check."
+  },
+  "E-RAD-LUNAR": {
+    "status": "fuente_localizada",
+    "method": "DOI resolved by Crossref",
+    "checkedAt": "2026-11-14",
+    "note": "Source located; figures not in the abstract (1369). Check the full text."
+  },
+  "E-RAD-ISS-RATE": {
+    "status": "sin_verificar",
+    "method": "",
+    "checkedAt": "2026-11-14",
+    "note": "No source located automatically; needs a manual search."
   }
 }

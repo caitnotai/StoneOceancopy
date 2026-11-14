@@ -413,7 +413,9 @@
       "E-RAD-ARTEMIS",
       "E-RAD-SHIELDING",
       "E-RAD-ASTRORAD",
-      "E-RAD-NO-DAILY-LIMIT"
+      "E-RAD-NO-DAILY-LIMIT",
+      "E-RAD-LUNAR",
+      "E-RAD-ISS-RATE"
     ]
   },
   {

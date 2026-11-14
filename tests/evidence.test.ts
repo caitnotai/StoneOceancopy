@@ -84,7 +84,7 @@ describe('treatment authority', () => {
 });
 
 describe('evidence provenance', () => {
-  it('gives every evidence row a provenance class, an effect and a located source', () => {
+  it('gives every evidence row a provenance class, an effect and a source', () => {
     for (const e of EVIDENCE) {
       expect(PROVENANCE_CLASSES, e.id).toContain(e.provenanceClass);
       expect(e.effect.length, e.id).toBeGreaterThan(0);
@@ -92,9 +92,21 @@ describe('evidence provenance', () => {
       expect(e.limitations.length, e.id).toBeGreaterThan(0);
       const source = SOURCES.find((s) => s.id === e.sourceId);
       expect(source, `${e.id} -> ${e.sourceId}`).toBeDefined();
-      expect(source?.url, `${e.id} has no URL`).toMatch(/^https:\/\//);
       expect(VERIFICATION_STATUSES, e.id).toContain(verificationOf(e.id));
+      // A claim is either linked to a source that opens, or openly marked as unverified.
+      if (verificationOf(e.id) === 'sin_verificar') {
+        expect(source?.url, e.id).toBeNull();
+        expect(e.limitations, e.id).toMatch(/no source located/i);
+      } else {
+        expect(source?.url, `${e.id} has no URL`).toMatch(/^https:\/\//);
+      }
     }
+  });
+
+  it('never lets an unverified claim back an alert threshold', () => {
+    const unverified = EVIDENCE.filter((e) => verificationOf(e.id) === 'sin_verificar').map((e) => e.id);
+    expect(unverified).toEqual(['E-RAD-ISS-RATE']);
+    for (const rule of RULES) expect(unverified, rule.id).not.toContain(primaryEvidence(rule)?.id);
   });
 
   it('states the sample size or says why there is none', () => {
