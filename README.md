@@ -25,6 +25,9 @@ Built for the NASA Space Apps Challenge 2026, challenge
   Every other range is labeled as not a NASA limit. Each rule lists its evidence with the class
   of provenance (observed in flight, ground analog, simulated, standard...), sample size,
   effect, confidence interval and a source that opens.
+- **Real space weather.** The app reads the GOES proton flux from NOAA SWPC, places it on the
+  NOAA S-scale and lists the solar particle events on record in NASA DONKI. It uses the live
+  feed when there is a connection and a bundled snapshot when there is not.
 - **Decision support, not prescription.** Medication steps are withheld unless the mission
   medical plan pre-authorizes drugs. That switch is off by default.
 - **Sixteen indicators** (heart rate, blood pressure, SpO2, cabin CO₂, sleep, mood, exercise,
@@ -52,8 +55,8 @@ data that the app, the tests and a SQLite database all read:
 | File | Content |
 |---|---|
 | `data/matrix/rules.json` | 11 Detect-Treat-Verify rules (10 from the report, 1 added by the project and flagged) |
-| `data/matrix/evidence.json` | 33 evidence claims with provenance class, n, effect, 95% CI and p |
-| `data/matrix/sources.json` | 27 sources, re-located in NASA NTRS, Crossref or by URL |
+| `data/matrix/evidence.json` | 35 evidence claims with provenance class, n, effect, 95% CI and p |
+| `data/matrix/sources.json` | 29 sources: 28 re-located in NASA NTRS, Crossref or by URL, 1 not located and flagged |
 | `reference_map.csv` | every claim linked to a source that resolves, with its verification status |
 | `data/snapshots/` | saved responses of the external sources, for offline use |
 | `INVENTARIO.md` | audit of the project against the report, in Spanish (working document) |
@@ -64,6 +67,7 @@ the source; `fuente_localizada` means the source was found but the figure was no
 
 ```bash
 npm run sources:smoke   # test every external source and save snapshots
+npm run ingest:space-weather   # refresh the bundled GOES and DONKI snapshot
 npm run refs:verify     # re-locate sources and rebuild reference_map.csv
 npm run db:build        # build data/crew-health.db from data/matrix
 ```
@@ -181,7 +185,10 @@ Other references for the simulator and reference ranges:
 
 ## Limits
 
-- **All readings are simulated.** No real sensor is connected yet.
+- **All crew readings are simulated.** No real sensor is connected yet. Space weather is the
+  only real data, and the solar event in the demo simulator is synthetic.
+- DONKI needs a personal api.nasa.gov key (`NASA_API_KEY`); without it the events listed are
+  those of the bundled snapshot.
 - **Reference ranges are illustrative.** A real mission would load ranges set by its flight
   surgeons. This is a concept for crew decision support, not a medical device.
 - The body is one adult male. Meshes are simplified for the web, and the lung outlines, lymph

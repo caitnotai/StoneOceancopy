@@ -254,3 +254,37 @@ Decisiones que tomé y conviene que revises:
   parámetro del proyecto, no una cifra de NASA.
 
 Pruebas: 73 de 73.
+
+### Bloque 3: radiación real (14-nov-2026)
+
+Se hizo con valores por defecto, porque las dos preguntas abiertas (clave de api.nasa.gov y
+evento histórico o sintético) no cambian el alcance.
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| Ingesta de GOES (NOAA SWPC) y de eventos SEP (NASA DONKI), con respaldo al snapshot si la fuente no responde | `tools/ingest/space-weather.mjs`, `npm run ingest:space-weather` | hecho |
+| Snapshot compacto incluido en la app, para funcionar sin red | `data/snapshots/space-weather.json` | hecho |
+| "Radiación ahora": nivel S de NOAA y evento en curso solo si el alza es sostenida | `src/domain/radiation/spaceWeather.ts`, `spe.ts` | hecho |
+| Carga en vivo con caída al snapshot | `src/data/spaceWeather.ts` | hecho |
+| Tarjeta "Space weather now" en el resumen y en el sistema de radiación | `src/ui/SpaceWeatherCard.ts` | hecho |
+| El flujo simulado parte del nivel real de calma medido por GOES | `SimulatedSource.setQuietFlux()` | hecho |
+| Tasas de radiación de la Luna y de la estación en `reference_map.csv` | `data/matrix/` | hecho: la lunar con DOI comprobado; la de la estación queda `sin_verificar` y rotulada |
+
+Lo que no se hizo:
+
+- **Reproducir un evento solar real.** SWPC solo sirve 7 días y hoy el Sol está en calma (S0).
+  El evento de la demo sigue siendo sintético y está rotulado. Un evento histórico exige el
+  archivo de NCEI, en formato netCDF.
+- **DONKI en vivo.** `DEMO_KEY` devuelve 429. La lista que se muestra es el snapshot de mayo y
+  junio de 2024. Con una clave propia en la variable `NASA_API_KEY`, el script la actualiza.
+- **Contraste con los protones diferenciales**, que pedía el encargo por el problema de calidad
+  de 2024. El snapshot diferencial está guardado, pero no se compara.
+- **Dosis a partir del flujo.** No hay un modelo validado para convertir flujo en dosis, así que
+  no se calcula.
+- **El endpoint `/radiation/now`.** La función existe (`radiationNow`); el servidor es del
+  bloque 6.
+
+Estado de `reference_map.csv`: 35 afirmaciones; 6 con la cifra hallada en el resumen, 28 con
+la fuente localizada y 1 sin verificar (la tasa de la estación), que no respalda ninguna alerta.
+
+Pruebas: 85 de 85.
