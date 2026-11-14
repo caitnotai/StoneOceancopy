@@ -70,7 +70,13 @@ npm run sources:smoke   # test every external source and save snapshots
 npm run ingest:space-weather   # refresh the bundled GOES and DONKI snapshot
 npm run refs:verify     # re-locate sources and rebuild reference_map.csv
 npm run db:build        # build data/crew-health.db from data/matrix
+npm run validate         # reproduce every number in METHODS.md (about two minutes)
 ```
+
+**Statistics and their validation are in [METHODS.md](METHODS.md)**: the individual baseline
+(empirical-Bayes shrinkage), the EWMA and CUSUM drift detectors, how their limits were
+calibrated, what the anomaly-injection study and the MMASH data show, and the limitations.
+The statistics library is validated but not yet used by the app to classify indicators.
 
 Data provided by the NASA STI Program (NTRS), NOAA SWPC, NASA DONKI, NASA OSDR and PhysioNet.
 

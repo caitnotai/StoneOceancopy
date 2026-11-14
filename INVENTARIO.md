@@ -288,3 +288,40 @@ Estado de `reference_map.csv`: 35 afirmaciones; 6 con la cifra hallada en el res
 la fuente localizada y 1 sin verificar (la tasa de la estación), que no respalda ninguna alerta.
 
 Pruebas: 85 de 85.
+
+### Bloque 4a: motor estadístico y validación (14-nov-2026)
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| Baseline individual con encogimiento empírico-bayesiano (normal-normal) e intervalos predictivos | `src/domain/stats/baseline.ts` | hecho |
+| Deriva con EWMA y CUSUM | `src/domain/stats/drift.ts` | hecho |
+| CO₂: regla dura y modelo logístico con prior OR ≈ 2 por mmHg | `src/domain/stats/co2.ts` | hecho |
+| Calibración de límites para una tasa de falsas alarmas objetivo | `tools/validate/calibrate-drift.mjs` | hecho |
+| Inyección de anomalías y análisis de sensibilidad | `tools/validate/inject-anomalies.mjs` | hecho |
+| Ingesta de MMASH y validación con datos reales | `tools/ingest/mmash.mjs`, `tools/validate/mmash.mjs` | hecho |
+| `METHODS.md` con supuestos, fórmulas, resultados y limitaciones | raíz | hecho |
+| Clasificar los 11 indicadores por baseline individual dentro de la app | – | **pendiente (bloque 4b)** |
+| Cambios antes y después de I4 con intervalos creíbles | – | pendiente (bloque 5) |
+
+Hallazgos que cambian el diseño:
+
+- **Los límites "de libro" no sirven con un baseline corto.** Con el límite para una falsa
+  alarma cada 100 lecturas y un baseline estimado con 14 lecturas, la probabilidad de al menos
+  una falsa alarma en 30 días es de 0,50. Recalibré los límites en la condición real de uso:
+  0,034 en 30 días para precaución y 0,004 para crítico.
+- **El precio es detectar tarde las derivas pequeñas.** Con esos límites, una deriva de 1
+  desviación estándar se detecta en una semana solo el 10 % de las veces; una de 3, el 97 %.
+- **Los datos reales no son independientes.** En la frecuencia cardiaca nocturna de MMASH las
+  falsas alarmas duplican la tasa nominal (autocorrelación de 0,51).
+- **El encogimiento ayuda cuando hay pocas lecturas.** Con una sola lectura, el error al
+  predecir el nivel de una persona baja 56 %; con ocho, 10 %. Los intervalos predictivos
+  quedan bien calibrados (95 % nominal, 95,8 % observado).
+- **El respaldo con sueño es moderado.** La correlación con el tiempo despierto reportado es
+  de 0,68 (IC 95 %: 0,22 a 0,91); con el número de despertares es de 0,40 y su intervalo
+  incluye el cero.
+
+`MMASH.zip` (24,6 MB) se descargó de PhysioNet y se verificó contra la suma SHA-256
+publicada. Está en `data/raw/`, fuera de git. El archivo derivado que sí se publica (60 KB)
+queda bajo la misma licencia ODbL, con atribución.
+
+Pruebas: 101 de 101.
