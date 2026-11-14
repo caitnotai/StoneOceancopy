@@ -171,3 +171,50 @@ es 0, 1, 2, 3 y 4, y dejar para el final lo que menos aporta a la demo:
 8. **DONKI** pide clave de api.nasa.gov. Puedo probar con `DEMO_KEY`, que tiene un límite
    bajo, o usar una tuya.
 9. **Alcance**: si aceptas el recorte de la sección 7 o prefieres intentarlo todo.
+
+## 9. Avance (14-nov-2026)
+
+El plan se aprobó con el stack recomendado. El proyecto se llevó al repo del equipo,
+`StoneOcean`, en la rama `feat/evidence-engine`; las pruebas pasan igual que antes (28 de 28).
+
+### Paso 0: prueba de humo de las fuentes
+
+Se corre con `npm run sources:smoke`. Guarda cada respuesta en `data/snapshots/` con un
+manifiesto (URL, fecha y SHA-256).
+
+| Fuente | Resultado | Formato | Latencia | Límite anunciado |
+|---|---|---|---|---|
+| SWPC, protones integrales GOES (6 h, 1, 3 y 7 días) | funciona | JSON; 8 canales de energía, GOES-18, un dato cada 5 min | 90 a 1.000 ms | ninguno |
+| SWPC, protones diferenciales (1 día) | funciona | JSON, con canal y `yaw_flip` | 111 ms | ninguno |
+| SWPC, escalas NOAA actuales y página de definición | funciona | JSON y HTML | 68 y 1.623 ms | ninguno |
+| DONKI SEP por api.nasa.gov con `DEMO_KEY` | funciona | JSON; 27 eventos de mayo y junio de 2024 | 908 ms | 10; quedaban 3 |
+| DONKI por CCMC sin clave | falla: no conecta | – | – | – |
+| OSDR, lista de archivos de OSD-569, 570, 571 y 575 | funciona | JSON | 170 a 530 ms | ninguno |
+| OSDR, metadatos del estudio y API biodata | funciona | JSON y CSV | 140 a 740 ms | ninguno |
+| MMASH en PhysioNet y en S3 | funciona | índice HTML y listado XML; `MMASH.zip` pesa 24,6 MB | 100 a 490 ms | ninguno |
+| NTRS, búsqueda por POST | funciona | JSON | 966 ms | 500; quedaban 499 |
+
+Dos hallazgos que afectan al bloque 3:
+
+- El flujo de protones de hoy es de calma (0,17 a 0,48 pfu en ≥ 10 MeV, escala S0) y SWPC solo
+  sirve los últimos 7 días. Para mostrar un evento real hace falta un archivo histórico.
+- `DEMO_KEY` se agota enseguida. Para usar DONKI con regularidad hace falta una clave propia de
+  api.nasa.gov, que es gratuita.
+
+### Bloque 1: matriz, evidencia y referencias
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| Las 10 reglas Detectar → Tratar → Verificar | `data/matrix/rules.json` | hecho |
+| 32 afirmaciones de evidencia con procedencia, n, efecto, IC 95 % y p | `data/matrix/evidence.json` | hecho |
+| 26 fuentes con URL o DOI comprobado | `data/matrix/sources.json`, `sources.resolved.json` | hecho |
+| `reference_map.csv` | raíz; se regenera con `npm run refs:verify` | hecho |
+| Base de datos SQLite con las 8 tablas | `tools/db/`, `npm run db:build` | hecho |
+| Tipos y catálogo para la app | `src/domain/evidence/` | hecho |
+| Pruebas | `tests/evidence.test.ts` (16) | hecho |
+
+Estado de las 32 afirmaciones en `reference_map.csv`: 6 con la cifra hallada en el resumen de
+la fuente, 26 con la fuente localizada pero la cifra sin comprobar (puede estar en el texto
+completo) y ninguna sin fuente. "Fuente localizada" no significa "cifra comprobada".
+
+Los choques de la sección 5 siguen sin tocar: se resuelven en el bloque 2.
