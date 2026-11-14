@@ -306,7 +306,8 @@ Reproduce: `npm run ingest:mmash` (after downloading and unzipping MMASH.zip int
 
 | Command | What it does | Time |
 |---|---|---|
-| `npm test` | 101 unit tests, including the statistics library | seconds |
+| `npm test` | 115 unit tests, including the statistics library and the API | seconds |
+| `npm run demo:check` | proves the demo needs no connection (snapshots, build, engine and API with the network blocked) | under a minute |
 | `npm run sources:smoke` | tests every external source and saves snapshots | under a minute |
 | `npm run refs:verify` | re-locates sources and rebuilds `reference_map.csv` | about a minute |
 | `npm run db:build` | builds the SQLite database from `data/matrix/` | seconds |

@@ -80,6 +80,38 @@ The statistics library is validated but not yet used by the app to classify indi
 
 Data provided by the NASA STI Program (NTRS), NOAA SWPC, NASA DONKI, NASA OSDR and PhysioNet.
 
+## API and offline demo
+
+The same rules engine is available over HTTP for local use (no authentication, one crew
+member). Alerts, interventions and their verification are also written to SQLite.
+
+```bash
+npm run db:build
+npm run api             # http://localhost:8787
+```
+
+| Endpoint | Returns |
+|---|---|
+| `GET /rules`, `GET /rules/{id}` | the Detect-Treat-Verify matrix; one rule with its evidence |
+| `GET /evidence?rule=&provenance_class=` | evidence claims with provenance class, n, effect, CI, source and verification status |
+| `GET /state/crew-1` | status of every system and indicator, triage verdict, self-checks due |
+| `GET /radiation/now` | real proton flux, NOAA S level, whether an event is in progress |
+| `GET /alerts` | current alerts; each one carries its provenance class and source |
+| `GET /verify`, `POST /verify` | interventions and their measured outcome; record a treatment step |
+| `POST /measurements`, `POST /simulate`, `PUT /medical-plan` | log a reading; advance the mission or change scenario; pre-authorize drugs |
+
+`POST /verify` refuses any medication step with 403 while the medical plan does not
+pre-authorize drugs.
+
+```bash
+npm run demo:check      # prove that nothing needs a connection
+npm run demo:offline    # the same checks, then serve the dashboard (4173) and the API (8787)
+```
+
+The check verifies the snapshots against their SHA-256, builds the database and the site,
+confirms that the only network request in the source is the optional live space weather
+feed, and runs the engine and the API with the network blocked.
+
 ## Run it
 
 Requires Node 22 or newer.

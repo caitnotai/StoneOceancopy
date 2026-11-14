@@ -325,3 +325,33 @@ publicada. Está en `data/raw/`, fuera de git. El archivo derivado que sí se pu
 queda bajo la misma licencia ODbL, con atribución.
 
 Pruebas: 101 de 101.
+
+### Bloque 6: API y demo offline (14-nov-2026)
+
+Se adelantó al bloque 4b porque no depende de la decisión pendiente sobre el punto de
+operación de los detectores.
+
+| Entregable | Dónde | Estado |
+|---|---|---|
+| API con `/rules`, `/evidence`, `/state/{crew_id}`, `/radiation/now`, `/alerts` y `/verify` | `src/api/handlers.ts`, `src/api/runtime.ts`, `server/index.mjs`; `npm run api` | hecho |
+| La API usa el mismo motor de reglas que el tablero (se carga con Vite, no hay segunda implementación) | `server/index.mjs` | hecho |
+| Alertas, intervenciones y verificaciones se guardan en SQLite | `server/index.mjs` | hecho |
+| Script de demo offline | `tools/demo-offline.mjs`; `npm run demo:offline`, `npm run demo:check` | hecho |
+
+Endpoints adicionales que hicieron falta: `POST /measurements` (lectura manual),
+`POST /simulate` (avanzar la misión o cambiar de escenario) y `PUT /medical-plan` (flag de
+fármacos). `POST /verify` rechaza con 403 cualquier paso con fármacos mientras el plan médico
+no los preautorice, aunque se declare con otro nivel de autoridad.
+
+Qué comprueba `npm run demo:check`: que los 19 snapshots están en disco y coinciden con su
+SHA-256; que los datos que la app incluye existen; que la base se construye desde la matriz;
+que el sitio compila; que el único archivo del código que abre una conexión es
+`src/data/spaceWeather.ts`, hacia SWPC y con caída al snapshot; y que, con la red bloqueada,
+el motor y la API responden.
+
+Límite de esa comprobación: bloquea la red dentro del proceso de Node. No se probó el tablero
+en un navegador con el equipo desconectado.
+
+La API es para uso local: no tiene autenticación y sigue a un solo tripulante (`crew-1`).
+
+Pruebas: 115 de 115.
