@@ -49,6 +49,12 @@ function bootstrap(): void {
       store.reset(clock.now);
       simulator.seedHistory(HISTORY_DAYS);
     },
+    startIntervention(id, stepText, authorityLevel) {
+      store.startIntervention(id, stepText, authorityLevel);
+      // In the demo the countermeasure works: the simulated physiology starts to recover.
+      simulator.applyCountermeasure(id);
+    },
+    setDrugsPreauthorized: (enabled) => store.setDrugsPreauthorized(enabled),
   };
 
   new TopBar($('topbar'), store);
