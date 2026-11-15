@@ -1,5 +1,6 @@
 import type { AppActions } from './app/actions';
-import { APP_TITLE, HISTORY_DAYS, MISSION_START_MINUTES } from './config';
+import { APP_TITLE, HISTORY_DAYS, MISSION_START_MINUTES, VOSK_MODEL_PATH } from './config';
+import { GroundLink } from './data/GroundLink';
 import { HealthStore } from './data/HealthStore';
 import { MissionClock } from './data/MissionClock';
 import { scenarioById } from './data/sources/scenarios';
@@ -10,7 +11,9 @@ import type { IntroOptions } from './intro/IntroExperience';
 import { environmentFor, loadProfile, type CrewProfile } from './intro/profile';
 import type { HealthStatus } from './domain/types';
 import { BodyViewport } from './scene/BodyViewport';
+import { DictationController } from './speech/DictationController';
 import { h } from './ui/dom';
+import { EarthLink } from './ui/EarthLink';
 import { SidePanel } from './ui/SidePanel';
 import { SimulatorBar, type SimulatorState } from './ui/SimulatorBar';
 import { SymptomReporter } from './ui/SymptomReporter';
@@ -33,6 +36,8 @@ function bootstrap(profile: CrewProfile): void {
   const clock = new MissionClock(MISSION_START_MINUTES);
   const simulator = new SimulatedSource(clock, () => store.environment);
   simulator.connect(store);
+  // The simulated link to the ground: consultations reach Earth and come back on time.
+  new GroundLink(store);
 
   // Real space weather: the bundled snapshot first (works offline), then the live feed.
   const offline = snapshotSpaceWeather();
@@ -70,6 +75,7 @@ function bootstrap(profile: CrewProfile): void {
     setDrugsPreauthorized: (enabled) => store.setDrugsPreauthorized(enabled),
     reportSymptom: (input) => void store.reportSymptom(input),
     removeSymptom: (id) => store.removeSymptom(id),
+    sendToFlightSurgeon: () => void store.requestConsult(Date.now()),
   };
 
   new TopBar($('topbar'), store);
@@ -91,8 +97,16 @@ function bootstrap(profile: CrewProfile): void {
   new SystemList($('systems'), store);
   new SidePanel($('panel'), store, actions);
   new SimulatorBar($('simulator'), actions, simulatorState);
-  new SymptomReporter($('viewport-tools'), $('symptom-form'), $('hint'), store, actions);
+  // Offline dictation for the report notes. Vosk and its model load on the first press only,
+  // and the store never sees anything but the text the crew member chose to save.
+  const dictation = new DictationController(async () => {
+    const { VoskEngine } = await import('./speech/vosk/VoskEngine');
+    return new VoskEngine({ modelUrl: `${import.meta.env.BASE_URL}${VOSK_MODEL_PATH}` });
+  });
+  new SymptomReporter($('viewport-tools'), $('symptom-form'), $('hint'), store, actions, dictation);
   new TwinViewControl($('viewport-tools'), $('hint'), store);
+  // A small Earth in the corner of the 3D view, and the signal of each consultation to it.
+  new EarthLink($('stage'), store);
 
   const statuses: HealthStatus[] = ['nominal', 'caution', 'critical', 'unknown'];
   $('legend').append(

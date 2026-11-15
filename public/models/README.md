@@ -33,8 +33,8 @@ terms and keeping the attribution satisfies both.
 # astronaut.glb (optional)
 
 The friendly outer layer of the health twin: the suit shown before the anatomy is explored.
-**This file is not in the repository yet.** While it is missing, the app draws a built-in
-suit generated in code (`src/scene/suit/ProceduralSuit.ts`), so nothing breaks.
+**This file is not in the repository yet.** While it is missing, the app draws the astronaut
+modelled in code (`src/scene/suit/ProceduralSuit.ts`).
 
 To use a real model, save it here as `astronaut.glb`. No code change is needed:
 

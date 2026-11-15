@@ -10,7 +10,6 @@ import { HealthTwin } from './HealthTwin';
 import { Picker } from './Picker';
 import { RadiationField } from './RadiationField';
 import { SceneManager } from './SceneManager';
-import { ProceduralSuit } from './suit/ProceduralSuit';
 import { SymptomMarkers } from './SymptomMarkers';
 import { SystemVisuals } from './SystemVisuals';
 
@@ -21,8 +20,8 @@ const WHOLE_BODY_HEIGHT = 1.1;
 export interface BodyViewportOptions {
   /** URL of the anatomical model (GLB). */
   modelUrl: string;
-  /** URL of the astronaut suit (GLB). Optional: a built-in suit is used while the file does not exist. */
-  suitUrl?: string;
+  /** URL of the astronaut model (GLB). While the file does not exist, the astronaut modelled in code is used. */
+  suitUrl: string;
 }
 
 /**
@@ -56,7 +55,6 @@ export class BodyViewport {
     this.scene = new SceneManager(container);
     const backdrop = createBackdrop();
     this.scene.scene.add(backdrop.object, this.radiation.object, this.symptomMarkers.object, this.twin.root);
-    this.twin.setSuit(new ProceduralSuit());
 
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'viewport-tooltip';
@@ -69,8 +67,8 @@ export class BodyViewport {
     this.picker = new Picker(
       this.scene.renderer.domElement,
       this.scene.camera,
-      // While the astronaut is on show there is no anatomy to point at.
-      () => (this.twin.explorable ? this.model : null),
+      // The suit while the astronaut is on show, the anatomy once it is revealed.
+      () => this.twin.pickTarget,
       (id) => store.hidden.has(id),
       {
         onHover: (stack, x, y) => this.showHover(stack, x, y),
@@ -108,7 +106,7 @@ export class BodyViewport {
     this.twin.setView(store.twinView);
     this.scene.start();
     void this.loadModel(options.modelUrl);
-    if (options.suitUrl) void this.loadSuit(options.suitUrl);
+    void this.loadSuit(options.suitUrl);
   }
 
   dispose(): void {
@@ -183,6 +181,11 @@ export class BodyViewport {
 
   /** Clicking the same spot again steps to the next system underneath ("go deeper"). */
   private pick(stack: SystemId[], surface: THREE.Vector3 | null): void {
+    if (this.store.twinView === 'astronaut') {
+      // A click on the astronaut is the same invitation as the button: explore the body.
+      if (stack.length > 0) this.store.setTwinView('scan');
+      return;
+    }
     if (this.store.reportMode) {
       // Reporting discomfort: the click marks a spot instead of selecting a system.
       if (!surface || stack.length === 0 || !this.model) return;
@@ -200,11 +203,16 @@ export class BodyViewport {
     this.store.select(stack[(current + 1) % stack.length]);
   }
 
-  /** A model at `url` replaces the built-in suit; if there is none, nothing changes. */
+  /** The astronaut is the model at `url` when that file exists; otherwise the one modelled in code. */
   private async loadSuit(url: string): Promise<void> {
     const { GltfSuit } = await import('./suit/GltfSuit');
     const suit = await GltfSuit.load(url);
-    if (suit) this.twin.setSuit(suit);
+    if (suit) {
+      this.twin.setSuit(suit);
+      return;
+    }
+    const { ProceduralSuit } = await import('./suit/ProceduralSuit');
+    this.twin.setSuit(new ProceduralSuit());
   }
 
   private applyView(view: TwinView): void {
@@ -236,6 +244,20 @@ export class BodyViewport {
   }
 
   private showHover(stack: SystemId[], clientX: number, clientY: number): void {
+    if (this.store.twinView === 'astronaut') {
+      const over = stack.length > 0;
+      this.scene.renderer.domElement.style.cursor = over ? 'pointer' : 'grab';
+      this.tooltip.hidden = !over;
+      if (!over) return;
+      delete this.tooltip.dataset.status;
+      this.tooltip.replaceChildren(
+        Object.assign(document.createElement('span'), { className: 'status-glyph', textContent: '' }),
+        Object.assign(document.createElement('strong'), { textContent: 'Explore my body' }),
+        Object.assign(document.createElement('small'), { textContent: 'Click the astronaut to see inside' }),
+      );
+      this.placeTooltip(clientX, clientY);
+      return;
+    }
     const id = stack[0] ?? null;
     this.store.hover(id);
     const reporting = this.store.reportMode;
@@ -245,7 +267,6 @@ export class BodyViewport {
       return;
     }
     const status = this.store.evaluation.systems[id].status;
-    const rect = this.container.getBoundingClientRect();
     this.tooltip.hidden = false;
     this.tooltip.dataset.status = status;
     this.tooltip.replaceChildren(
@@ -260,6 +281,11 @@ export class BodyViewport {
         Object.assign(document.createElement('small'), { textContent: `Click again for ${SYSTEMS[stack[1]].name.toLowerCase()}` }),
       );
     }
+    this.placeTooltip(clientX, clientY);
+  }
+
+  private placeTooltip(clientX: number, clientY: number): void {
+    const rect = this.container.getBoundingClientRect();
     const x = Math.min(clientX - rect.left + 16, rect.width - 220);
     this.tooltip.style.transform = `translate(${Math.max(8, x)}px, ${clientY - rect.top + 16}px)`;
   }
