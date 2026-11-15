@@ -13,6 +13,7 @@ import { BodyViewport } from './scene/BodyViewport';
 import { h } from './ui/dom';
 import { SidePanel } from './ui/SidePanel';
 import { SimulatorBar, type SimulatorState } from './ui/SimulatorBar';
+import { SymptomReporter } from './ui/SymptomReporter';
 import './ui/styles.css';
 import { SystemList } from './ui/SystemList';
 import { TopBar } from './ui/TopBar';
@@ -66,6 +67,8 @@ function bootstrap(profile: CrewProfile): void {
       simulator.applyCountermeasure(id);
     },
     setDrugsPreauthorized: (enabled) => store.setDrugsPreauthorized(enabled),
+    reportSymptom: (input) => void store.reportSymptom(input),
+    removeSymptom: (id) => store.removeSymptom(id),
   };
 
   new TopBar($('topbar'), store);
@@ -87,6 +90,7 @@ function bootstrap(profile: CrewProfile): void {
   new SystemList($('systems'), store);
   new SidePanel($('panel'), store, actions);
   new SimulatorBar($('simulator'), actions, simulatorState);
+  new SymptomReporter($('viewport-tools'), $('symptom-form'), $('hint'), store, actions);
 
   const statuses: HealthStatus[] = ['nominal', 'caution', 'critical', 'unknown'];
   $('legend').append(
