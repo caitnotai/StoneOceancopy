@@ -1,9 +1,6 @@
 import type { AppActions } from './app/actions';
 import { APP_TITLE, HISTORY_DAYS, MISSION_START_MINUTES, VOSK_MODEL_PATH } from './config';
-<<<<<<< HEAD
-=======
 import { GroundLink } from './data/GroundLink';
->>>>>>> b67c0b7d7176a5ff2160f9462cc16adb7a96a41f
 import { HealthStore } from './data/HealthStore';
 import { MissionClock } from './data/MissionClock';
 import { scenarioById } from './data/sources/scenarios';
