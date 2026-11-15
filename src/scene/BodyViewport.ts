@@ -246,6 +246,7 @@ export class BodyViewport {
   private showHover(stack: SystemId[], clientX: number, clientY: number): void {
     if (this.store.twinView === 'astronaut') {
       const over = stack.length > 0;
+      this.twin.setPeek(over);
       this.scene.renderer.domElement.style.cursor = over ? 'pointer' : 'grab';
       this.tooltip.hidden = !over;
       if (!over) return;

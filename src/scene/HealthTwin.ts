@@ -46,6 +46,8 @@ export class HealthTwin {
   private current: TwinView = 'astronaut';
   private weightless = false;
   private drift = 0;
+  private peek = 0;
+  private peekTarget = 0;
 
   constructor(private readonly visuals: SystemVisuals) {
     this.root.name = 'health-twin';
@@ -123,6 +125,7 @@ export class HealthTwin {
     if (view === this.current) return;
     const from = this.current;
     this.current = view;
+    this.peekTarget = 0;
     const target = LOOK[view];
     gsap.killTweensOf(this.look);
     if (this.still) {
@@ -142,10 +145,15 @@ export class HealthTwin {
     gsap.to(this.look, { ...target, duration: view === 'astronaut' ? 1.1 : 0.7, ease: 'power2.inOut' });
   }
 
+  setPeek(peeking: boolean): void {
+    this.peekTarget = peeking && this.current === 'astronaut' ? 0.34 : 0;
+  }
+
   update(dt: number, elapsed: number, vitals: Vitals): void {
-    this.visuals.setReveal(this.look.anatomy);
+    this.peek += (this.peekTarget - this.peek) * (this.still ? 1 : 1 - Math.exp(-dt * 5));
+    this.visuals.setReveal(Math.max(this.look.anatomy, this.peek));
     this.visuals.setSubdued(this.look.scan);
-    this.suit?.setOpacity(this.look.suit);
+    this.suit?.setOpacity(Math.min(this.look.suit, 1 - this.peek * 0.5));
     this.suit?.update(elapsed, this.still ? 0 : breath(elapsed, vitals));
 
     // A slow sweep up and down the body while it is being scanned.
