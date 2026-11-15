@@ -260,6 +260,8 @@ transcripts never leave the browser, and no cloud service or browser `SpeechReco
   only loaded on the first press, then kept unpacked in IndexedDB for offline use. See
   [`public/models/vosk/README.md`](public/models/vosk/README.md).
 
+<<<<<<< HEAD
+=======
 ### Send to Flight Surgeon, and why distance matters (EIMO)
 
 When the triage escalates to the ground (a critical finding), or a treatment was not verified and
@@ -286,6 +288,7 @@ under the verdict: status and what to do come first, the consultation second, th
   delay ladder of every environment behind its "?": the longer the wait for Earth, the more the
   crew must be able to act alone first.
 
+>>>>>>> b67c0b7d7176a5ff2160f9462cc16adb7a96a41f
 ### The side panel
 
 The triage verdict stays on top; three tabs (`src/ui/panel/`) disclose the rest step by step, all following the
