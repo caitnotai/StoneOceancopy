@@ -171,7 +171,7 @@ Data flows one way. No layer reaches back into the one before it.
 | Folder | Responsibility | May import |
 |---|---|---|
 | `src/domain/` | The model and the rules. Systems, indicators and environments are **data** (`catalog/`); `engine/` turns readings into statuses, trends and a triage verdict. Pure TypeScript. | nothing |
-| `src/data/` | `HealthStore` (single source of truth, typed events), `MissionClock`, and reading sources behind the `SensorSource` interface. | `domain` |
+| `src/data/` | `HealthStore` (single source of truth, typed events), `MissionClock`, `GroundLink` (plays flight surgeon consultations on time), and reading sources behind the `SensorSource` interface. | `domain` |
 | `src/scene/` | three.js. `BodyModel` is the contract "one layer per system". `GltfBody` implements it with the anatomical model; `ProceduralBody` implements it from primitives and is the fallback if the model cannot load. `SystemVisuals` is the only place where status becomes color in 3D; `Picker` handles clicks. | `domain`, `data` |
 | `src/speech/` | Offline voice dictation. `DictationController` is the state machine and knows no recognizer; `vosk/VoskEngine.ts` is the only file that imports Vosk. The store and the domain never import this folder (a test checks it). | `speech` only |
 | `src/ui/` | DOM panels and canvas charts. | `domain`, `data`, `speech` (types and controller) |
@@ -259,6 +259,32 @@ transcripts never leave the browser, and no cloud service or browser `SpeechReco
 - The model (`public/models/vosk/`, about 40 MB, **not in the repository yet**: run `npm run model:vosk`) is
   only loaded on the first press, then kept unpacked in IndexedDB for offline use. See
   [`public/models/vosk/README.md`](public/models/vosk/README.md).
+
+### Send to Flight Surgeon, and why distance matters (EIMO)
+
+When the triage escalates to the ground (a critical finding), or a treatment was not verified and
+the protocol says "move to the next authority level", a **Send to Flight Surgeon** button appears
+under the verdict: status and what to do come first, the consultation second, the details after.
+
+- **Latency** reuses the environment model: 2 × `commsDelaySec` of light travel (the value the triage
+  already uses) plus `linkHandlingSec` for relays and ground handling (`src/domain/consult.ts`).
+  Station about 2.5 s, Moon about 11 s, transit about 22 min, Mars about 44 min.
+- Pressing it packs a short medical summary and plays the link: preparing transmission, sending the
+  summary, signal en route, awaiting the response, response received, with a countdown. Waits of
+  20 s or less play in real time; longer ones are compressed to about 30 s and labeled
+  "Demo playback accelerated ×88", while the text keeps the real delay.
+- A small Earth sits in the corner of the 3D view, smaller the farther the mission is, with the
+  round trip under it. The signal leaves the crew, reaches Earth and the answer travels back
+  (`src/ui/EarthLink.ts`); with reduced motion the path and states stay and nothing moves.
+- The answer is assembled from the onboard protocol for the data that was sent, and says so. It adds
+  no diagnosis and never offers a drug the medical plan withholds. Statuses, thresholds, baselines,
+  EWMA/CUSUM and the triage are not touched.
+- The mission history records "consultation requested", "signal sent", "awaiting Earth response"
+  and "Earth response received" at their link times (a Mars reply is logged 44 min after the
+  request, whatever the demo speed). They appear in the overview and as markers on the trend chart.
+- Under the panel: *HELIOS is a step toward EIMO (Earth-Independent Medical Operations)*, with the
+  delay ladder of every environment behind its "?": the longer the wait for Earth, the more the
+  crew must be able to act alone first.
 
 ### The side panel
 
