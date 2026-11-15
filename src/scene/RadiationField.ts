@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MAX_PARTICLES = 520;
+const MAX_PARTICLES = 100;
 const RADIUS = 2.4;
 const CENTER = new THREE.Vector3(0, 0.9, 0);
 const STREAK = 0.11;
