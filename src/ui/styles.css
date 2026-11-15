@@ -216,7 +216,8 @@ a {
 }
 
 .brand h1 {
-  font-size: 17px;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 21px;
   font-weight: 650;
   letter-spacing: 0.01em;
 }
