@@ -1,3 +1,4 @@
+import { gsap } from 'gsap';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -26,6 +27,7 @@ export class SceneManager {
   /** What the camera is framing: a region, the whole body (null), or nothing because the user took over (undefined). */
   private framing: THREE.Box3 | null | undefined = null;
   private frame = 0;
+  private cameraTween: object = {};
   private lastTime = 0;
   private elapsed = 0;
 
@@ -58,6 +60,7 @@ export class SceneManager {
     this.controls.target.copy(HOME_TARGET);
     // As soon as the user takes the camera, stop moving it for them.
     this.controls.addEventListener('start', () => {
+      gsap.killTweensOf(this.cameraTween);
       this.controls.autoRotate = false;
       this.focus = null;
       this.framing = undefined;
@@ -81,6 +84,7 @@ export class SceneManager {
 
   /** Smoothly frames a region of the body, or the whole body when `box` is null. */
   focusOn(box: THREE.Box3 | null): void {
+    gsap.killTweensOf(this.cameraTween);
     this.framing = box;
     if (!box) {
       this.focus = { target: HOME_TARGET.clone(), distance: this.homeDistance() };
@@ -94,6 +98,35 @@ export class SceneManager {
       this.homeDistance(),
     );
     this.focus = { target: box.getCenter(new THREE.Vector3()), distance };
+  }
+
+  /**
+   * Swings the camera round to face the figure from the front, framing the whole body.
+   * The camera travels around the body (never through it); GSAP only eases the angles.
+   */
+  faceFront(duration: number): void {
+    this.controls.autoRotate = false;
+    this.focus = null;
+    this.framing = null;
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const from = new THREE.Spherical().setFromVector3(offset);
+    const startTarget = this.controls.target.clone();
+    // Take the short way round.
+    const theta = Math.atan2(Math.sin(from.theta), Math.cos(from.theta));
+    const orbit = { theta, phi: from.phi, radius: from.radius, t: 0 };
+    const place = (): void => {
+      this.controls.target.lerpVectors(startTarget, HOME_TARGET, orbit.t);
+      this.camera.position.setFromSphericalCoords(orbit.radius, orbit.phi, orbit.theta).add(this.controls.target);
+    };
+    gsap.killTweensOf(this.cameraTween);
+    this.cameraTween = orbit;
+    const to = { theta: 0, phi: Math.PI / 2 - 0.06, radius: this.homeDistance(), t: 1 };
+    if (duration <= 0) {
+      Object.assign(orbit, to);
+      place();
+      return;
+    }
+    gsap.to(orbit, { ...to, duration, ease: 'power2.inOut', onUpdate: place });
   }
 
   start(): void {
@@ -113,6 +146,7 @@ export class SceneManager {
 
   dispose(): void {
     cancelAnimationFrame(this.frame);
+    gsap.killTweensOf(this.cameraTween);
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.composer.dispose();

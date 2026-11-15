@@ -1,27 +1,20 @@
-import type { AppActions } from '../app/actions';
-import { MONITORING, usesIndividualBaseline } from '../domain/engine/monitor';
-import { verificationWindowMin, type Intervention } from '../domain/engine/verify';
-import { evidenceFor } from '../domain/evidence/catalog';
-import { BASIS_LABEL, provenanceOf, type AlertProvenance } from '../domain/evidence/indicatorRules';
-import { AUTHORITY_LABEL, PROVENANCE_LABEL, VERIFICATION_LABEL, type EvidenceWithSource } from '../domain/evidence/types';
-import { offerSteps, WITHHELD_STEP, type MedicalPlan } from '../domain/medicalPlan';
-import type { DriftSummary, DriftTrigger, HealthStatus, IndicatorDef, IndicatorEvaluation, MissionMinutes, Range, Reading, Thresholds } from '../domain/types';
-import { h, setText } from './dom';
-import { formatRange, formatTrend, formatValue, formatWhen, statusBadge, updateBadge } from './format';
-import { TrendChart } from './TrendChart';
-
-const TABLE_ROWS = 8;
+import type { AppActions } from '../../app/actions';
+import { MONITORING, usesIndividualBaseline } from '../../domain/engine/monitor';
+import { verificationWindowMin, type Intervention } from '../../domain/engine/verify';
+import { evidenceFor } from '../../domain/evidence/catalog';
+import { BASIS_LABEL, provenanceOf, type AlertProvenance } from '../../domain/evidence/indicatorRules';
+import { AUTHORITY_LABEL, PROVENANCE_LABEL, VERIFICATION_LABEL, type EvidenceWithSource } from '../../domain/evidence/types';
+import { offerSteps, WITHHELD_STEP, type MedicalPlan } from '../../domain/medicalPlan';
+import type { DriftSummary, DriftTrigger, HealthStatus, IndicatorDef, IndicatorEvaluation } from '../../domain/types';
+import { h, setText } from '../dom';
+import { formatValue, formatWhen, statusBadge, updateBadge } from '../format';
+import { helpToggle } from './help';
 
 const TRIGGER_LABEL: Record<DriftTrigger, string> = {
   single_value: 'one value far from your baseline',
   ewma: 'a sustained drift (EWMA)',
   cusum: 'an accumulated change (CUSUM)',
 };
-
-const roundRange = (range: Range, decimals: number): Range => ({
-  min: Number.isFinite(range.min) ? Number(range.min.toFixed(decimals)) : range.min,
-  max: Number.isFinite(range.max) ? Number(range.max.toFixed(decimals)) : range.max,
-});
 
 /** What the card needs besides the readings: the medical plan and the latest intervention. */
 export interface CardContext {
@@ -51,82 +44,52 @@ function evidenceItem(e: EvidenceWithSource): HTMLElement {
 }
 
 /**
- * One indicator, laid out as the loop the crew member follows:
- * Detect (value, status and where the threshold comes from), Treat (what to do, by
- * authority level) and Verify (the measured response that closes the action).
+ * The clinical detail of one indicator, as the loop the crew member follows:
+ * Detect (where the threshold comes from), Treat (what to do, by authority level) and
+ * Verify (the measured response that closes the action), then the evidence behind the rule.
+ * Each step is collapsible; the step that needs the reader opens by itself.
  */
-export class IndicatorCard {
+export class ProtocolCard {
   readonly element: HTMLElement;
-  private readonly chart: TrendChart;
   private readonly provenance: AlertProvenance;
-  private readonly value = h('span', { class: 'indicator-value' }, '–');
+  private readonly value = h('span', { class: 'protocol-value' }, '–');
   private readonly badge = statusBadge('unknown');
-  private readonly trend = h('span', { class: 'indicator-trend' });
-  private readonly range = h('span', { class: 'indicator-range' });
-  private readonly dueChip = h('span', { class: 'chip chip-due', hidden: true }, 'Check due');
   private readonly basis = h('span', { class: 'basis' });
   private readonly reference = h('p');
   private readonly baselineRules = h('p', { class: 'provenance', hidden: true });
   private readonly treat = h('div', { class: 'dtv-body' });
   private readonly verify = h('div', { class: 'dtv-body' });
-  private readonly tableBody = h('tbody');
-  private readonly input: HTMLInputElement;
+  private readonly treatStep: HTMLDetailsElement;
+  private readonly verifyStep: HTMLDetailsElement;
   private loopSignature = '';
-  private tableSignature = '';
+  private flagged: boolean | null = null;
 
-  constructor(private readonly def: IndicatorDef, private readonly actions: AppActions) {
-    this.chart = new TrendChart(def);
+  constructor(private readonly def: IndicatorDef, private readonly actions: AppActions, onViewTrend: () => void) {
     this.provenance = provenanceOf(def.id);
     const { provenance } = this;
-    const step = def.decimals > 0 ? 1 / 10 ** def.decimals : 1;
-    this.input = h('input', {
-      type: 'number',
-      id: `log-${def.id}`,
-      min: String(def.display.min),
-      max: String(def.display.max),
-      step: String(step),
-      placeholder: def.unit,
-      required: true,
-    });
-
-    const form = h(
-      'form',
-      {
-        class: 'log-form',
-        onsubmit: (event: Event) => {
-          event.preventDefault();
-          const value = Number(this.input.value);
-          if (this.input.value === '' || !Number.isFinite(value)) return;
-          actions.logReading(def.id, Math.min(def.display.max, Math.max(def.display.min, value)));
-          this.input.value = '';
-        },
-      },
-      h('label', { for: `log-${def.id}` }, 'Log a measurement'),
-      this.input,
-      h('button', { type: 'submit', class: 'button' }, 'Log'),
-    );
-
     const evidence = evidenceFor(provenance.rule);
+    const step = (title: string, body: HTMLElement, open = false): HTMLDetailsElement => h('details', { class: 'dtv-step', open }, h('summary', null, title), body);
+    this.treatStep = step('Treat', this.treat);
+    this.verifyStep = step('Verify', this.verify);
+    const help = helpToggle(`About ${def.name}`, h('p', null, h('strong', null, 'Why it matters. '), def.whyItMatters), h('p', null, h('strong', null, 'How to measure. '), def.howToMeasure));
+
     this.element = h(
       'article',
-      { class: 'indicator-card' },
+      { class: 'protocol-card' },
       h(
         'header',
-        { class: 'indicator-head' },
+        { class: 'protocol-head' },
         h('h4', null, def.name),
-        h('span', { class: 'chip' }, def.acquisition === 'sensor' ? 'Sensor' : 'Self-check'),
-        this.dueChip,
+        help.button,
+        this.value,
+        this.badge,
       ),
-      h('div', { class: 'indicator-reading' }, h('div', { class: 'indicator-figure' }, this.value, h('span', { class: 'indicator-unit' }, def.unit)), this.badge),
-      h('div', { class: 'indicator-meta' }, this.range, this.trend),
-      this.chart.element,
+      help.content,
       h(
-        'ol',
+        'div',
         { class: 'dtv' },
-        h(
-          'li',
-          { class: 'dtv-step' },
-          h('h5', null, 'Detect'),
+        step(
+          'Detect',
           h(
             'div',
             { class: 'dtv-body' },
@@ -140,57 +103,42 @@ export class IndicatorCard {
               sourceLink(provenance.source.matchedTitle ?? provenance.source.title, provenance.source.url),
             ),
           ),
+          true,
         ),
-        h('li', { class: 'dtv-step' }, h('h5', null, 'Treat'), this.treat),
-        h('li', { class: 'dtv-step' }, h('h5', null, 'Verify'), this.verify),
-      ),
-      h('p', { class: 'indicator-why' }, def.whyItMatters),
-      h('details', null, h('summary', null, 'How to measure'), h('p', null, def.howToMeasure)),
-      h(
-        'details',
-        null,
-        h('summary', null, `Evidence for this rule (${evidence.length})`),
-        h('p', { class: 'reference' }, `${provenance.rule.condition}. ${provenance.rule.incidence}`),
-        h('ul', { class: 'evidence-list' }, ...evidence.map(evidenceItem)),
-      ),
-      h(
-        'details',
-        null,
-        h('summary', null, 'Recent readings'),
+        this.treatStep,
+        this.verifyStep,
         h(
-          'table',
-          { class: 'readings-table' },
-          h('thead', null, h('tr', null, h('th', null, 'When'), h('th', null, def.unit), h('th', null, 'Source'))),
-          this.tableBody,
+          'details',
+          { class: 'dtv-step dtv-evidence' },
+          h('summary', null, `Evidence for this rule (${evidence.length})`),
+          h('div', { class: 'dtv-body' }, h('p', { class: 'reference' }, `${provenance.rule.condition}. ${provenance.rule.incidence}`), h('ul', { class: 'evidence-list' }, ...evidence.map(evidenceItem))),
         ),
       ),
-      form,
+      h('button', { class: 'link-button', type: 'button', onclick: onViewTrend }, 'View trend →'),
     );
   }
 
-  update(evaluation: IndicatorEvaluation, readings: readonly Reading[], thresholds: Thresholds, now: MissionMinutes, context: CardContext): void {
+  update(evaluation: IndicatorEvaluation, context: CardContext): void {
     const { def } = this;
     const { drift } = evaluation;
-    const nominal = formatRange(thresholds.nominal, def);
-    setText(this.value, evaluation.latest ? formatValue(evaluation.latest.value, def) : '–');
+    setText(this.value, evaluation.latest ? `${formatValue(evaluation.latest.value, def)} ${def.unit}` : 'No reading');
     updateBadge(this.badge, evaluation.status);
-    if (drift) setText(this.range, `Your usual range ${formatRange(roundRange(drift.usualRange, def.decimals), def)} ${def.unit}`);
-    else setText(this.range, nominal === 'any' ? 'No limit set: tracked only' : `Nominal ${nominal} ${def.unit}`);
-    setText(this.trend, evaluation.worsening ? `${formatTrend(evaluation)} · heading out of range` : formatTrend(evaluation));
-    this.trend.classList.toggle('is-worsening', evaluation.worsening);
-    this.dueChip.hidden = !(evaluation.due && def.acquisition === 'self-check');
     this.element.dataset.status = evaluation.status;
-    // Against the baseline, the bands are the single-value limits. They apply to a day's value,
-    // so the single readings of a sensor are drawn over them but not judged one by one.
-    this.chart.update(readings, drift ? drift.bands : thresholds, now, { status: evaluation.status, pointStatus: !drift || def.cadenceHours > 2 });
     this.renderBasis(drift);
     this.renderLoop(evaluation.status, context, Boolean(drift));
-    this.renderTable(readings);
+    // When an indicator becomes flagged (or a treatment starts), open the step that now matters. After that the reader decides.
+    const flagged = evaluation.status === 'caution' || evaluation.status === 'critical';
+    if (flagged !== this.flagged) {
+      this.flagged = flagged;
+      this.treatStep.open = flagged;
+    }
+    if (context.intervention && !this.verifyStep.dataset.opened) {
+      this.verifyStep.dataset.opened = 'true';
+      this.verifyStep.open = true;
+    }
   }
 
-  dispose(): void {
-    this.chart.dispose();
-  }
+  dispose(): void {}
 
   /** Detect: what the value is compared with. The individual baseline replaces the illustrative range once it exists. */
   private renderBasis(drift: DriftSummary | undefined): void {
@@ -292,23 +240,5 @@ export class IndicatorCard {
       );
     }
     this.verify.replaceChildren(h('p', null, rule.verify.criterion), state);
-  }
-
-  private renderTable(readings: readonly Reading[]): void {
-    const recent = readings.slice(-TABLE_ROWS).reverse();
-    const signature = recent.map((r) => `${r.t}:${r.value}`).join('|');
-    if (signature === this.tableSignature) return;
-    this.tableSignature = signature;
-    this.tableBody.replaceChildren(
-      ...recent.map((r) =>
-        h(
-          'tr',
-          null,
-          h('td', null, formatWhen(r.t)),
-          h('td', null, formatValue(r.value, this.def)),
-          h('td', null, r.source === 'manual' ? 'Logged by hand' : r.source === 'sensor' ? 'Sensor' : 'Simulated'),
-        ),
-      ),
-    );
   }
 }

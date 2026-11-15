@@ -125,6 +125,7 @@ npm install
 npm run dev      # http://localhost:5173
 npm test         # rules engine and simulator tests
 npm run build    # static site in dist/
+npm run model:vosk   # optional: install the offline voice model for dictation (about 40 MB)
 ```
 
 The build is a static site with relative paths: publish `dist/` on GitHub Pages, Vercel or
@@ -170,9 +171,10 @@ Data flows one way. No layer reaches back into the one before it.
 | Folder | Responsibility | May import |
 |---|---|---|
 | `src/domain/` | The model and the rules. Systems, indicators and environments are **data** (`catalog/`); `engine/` turns readings into statuses, trends and a triage verdict. Pure TypeScript. | nothing |
-| `src/data/` | `HealthStore` (single source of truth, typed events), `MissionClock`, and reading sources behind the `SensorSource` interface. | `domain` |
+| `src/data/` | `HealthStore` (single source of truth, typed events), `MissionClock`, `GroundLink` (plays flight surgeon consultations on time), and reading sources behind the `SensorSource` interface. | `domain` |
 | `src/scene/` | three.js. `BodyModel` is the contract "one layer per system". `GltfBody` implements it with the anatomical model; `ProceduralBody` implements it from primitives and is the fallback if the model cannot load. `SystemVisuals` is the only place where status becomes color in 3D; `Picker` handles clicks. | `domain`, `data` |
-| `src/ui/` | DOM panels and canvas charts. | `domain`, `data` |
+| `src/speech/` | Offline voice dictation. `DictationController` is the state machine and knows no recognizer; `vosk/VoskEngine.ts` is the only file that imports Vosk. The store and the domain never import this folder (a test checks it). | `speech` only |
+| `src/ui/` | DOM panels and canvas charts. | `domain`, `data`, `speech` (types and controller) |
 | `src/main.ts` | Composition root: the only file that knows every layer. | all |
 | `tools/` | Offline build of the 3D model: classifies the atlas parts by body system (`bodyparts/classify.mjs`), simplifies them and writes `public/models/body.glb`. | - |
 
@@ -201,6 +203,101 @@ optionally, the mission habitat, which selects the starting environment.
 - The name and habitat are kept in `localStorage` only. Later visits go straight to the console; the name in
   the top bar, or `?intro` in the address, replays the film.
 - With "reduce motion" enabled, the film becomes a single still frame with all the text shown at once.
+
+### The health twin: astronaut, scan, anatomy
+
+The dashboard opens on a friendly astronaut; the anatomy appears only when the crew member asks for it.
+
+- `HealthTwin` (`src/scene/HealthTwin.ts`) holds two layers, the suit (`AstronautSuit`) and the anatomy
+  (`BodyModel`), and three views: `astronaut`, `scan` (the anatomy through a holographic suit) and `anatomy`.
+- "Explore my body" turns the camera to the front, thins the suit and brings the anatomy up system by system.
+  GSAP eases opacities and the camera only; the Three.js frame loop is unchanged.
+- The suit is visual only. Picking still goes through `Picker.ts` and `body.glb`; while the astronaut is shown
+  there is nothing to pick.
+- In `anatomy` the body rests in a neutral grey-blue; a system shows its status color only when it is selected
+  or needs attention. In `scan` the suit is a hologram (22% opacity) and every system is faint except the
+  selected one.
+- A see-through suit is drawn in two passes, depth then color (`suit/SuitFade.ts`), so overlapping parts of
+  the suit do not show through each other.
+- The astronaut is modelled in code (`src/scene/suit/ProceduralSuit.ts`, built with the small kit in
+  `suit/shapes.ts`). A `public/models/astronaut.glb`, if added, replaces it automatically (see
+  `public/models/README.md`).
+- Clicking the astronaut starts the exploration, like the button. The click still goes through `Picker.ts`:
+  `HealthTwin.pickTarget` hands it the suit while the astronaut is shown and the anatomy afterwards.
+- The figure breathes, and drifts very slightly in microgravity (station, transit). Reduced motion turns
+  both off and makes every transition immediate.
+
+### Reporting discomfort on the body
+
+"Report discomfort" (above the 3D view) turns the next click on the body into a pin instead of a selection.
+
+- `Picker.ts` returns the body systems under the pointer and the nearest surface point; `BodyViewport` converts
+  that point to the body's own frame and hands it to the store as plain `{x, y, z}`.
+- The model lives in `src/domain/symptoms.ts` (no Three.js, no DOM): intensity 1–10, type, optional notes.
+- `HealthStore.reportSymptom()` adds it to the mission log and emits `symptoms`; `SymptomMarkers` draws the pins,
+  the overview lists the reports and the trend chart marks them on the time axis.
+- A report is an observation. It **does not change any status, threshold or triage level**: there is no validated
+  rule linking a reported pain to a finding, so none was added. It only suggests the self-checks the catalog
+  already files under the same body system (and the dizziness score when dizziness is reported).
+
+### Dictating the notes, offline
+
+The notes field of the report has a **Dictate** button. Speech is recognized on the device by
+[Vosk](https://alphacephei.com/vosk/) (Kaldi compiled to WebAssembly) in a Web Worker: audio and
+transcripts never leave the browser, and no cloud service or browser `SpeechRecognition` is used.
+
+- States: idle → loading model → listening (live words shown as they are recognized) → processing →
+  transcript ready, or error. Esc stops listening; the button, status line and suggestions work from the keyboard.
+- The transcript goes into the notes as ordinary text and focus moves there, so it is reviewed and
+  edited before "Save report". The report cannot be saved while dictation is still running.
+- Speech is never turned into a diagnosis: the type, body system and intensity stay as the crew member set
+  them. If the notes (typed or dictated) mention dizziness or vision problems, the related self-check is
+  **suggested** with an unticked box; only a ticked one is added to the report (`src/domain/noteSuggestions.ts`,
+  a keyword match that ignores negations such as "no dizziness").
+- Microphone problems get a plain explanation and a way forward: permission blocked, no microphone, device busy,
+  page not on https, model not installed.
+- The model (`public/models/vosk/`, about 40 MB, **not in the repository yet**: run `npm run model:vosk`) is
+  only loaded on the first press, then kept unpacked in IndexedDB for offline use. See
+  [`public/models/vosk/README.md`](public/models/vosk/README.md).
+
+### Send to Flight Surgeon, and why distance matters (EIMO)
+
+When the triage escalates to the ground (a critical finding), or a treatment was not verified and
+the protocol says "move to the next authority level", a **Send to Flight Surgeon** button appears
+under the verdict: status and what to do come first, the consultation second, the details after.
+
+- **Latency** reuses the environment model: 2 × `commsDelaySec` of light travel (the value the triage
+  already uses) plus `linkHandlingSec` for relays and ground handling (`src/domain/consult.ts`).
+  Station about 2.5 s, Moon about 11 s, transit about 22 min, Mars about 44 min.
+- Pressing it packs a short medical summary and plays the link: preparing transmission, sending the
+  summary, signal en route, awaiting the response, response received, with a countdown. Waits of
+  20 s or less play in real time; longer ones are compressed to about 30 s and labeled
+  "Demo playback accelerated ×88", while the text keeps the real delay.
+- A small Earth sits in the corner of the 3D view, smaller the farther the mission is, with the
+  round trip under it. The signal leaves the crew, reaches Earth and the answer travels back
+  (`src/ui/EarthLink.ts`); with reduced motion the path and states stay and nothing moves.
+- The answer is assembled from the onboard protocol for the data that was sent, and says so. It adds
+  no diagnosis and never offers a drug the medical plan withholds. Statuses, thresholds, baselines,
+  EWMA/CUSUM and the triage are not touched.
+- The mission history records "consultation requested", "signal sent", "awaiting Earth response"
+  and "Earth response received" at their link times (a Mars reply is logged 44 min after the
+  request, whatever the demo speed). They appear in the overview and as markers on the trend chart.
+- Under the panel: *HELIOS is a step toward EIMO (Earth-Independent Medical Operations)*, with the
+  delay ladder of every environment behind its "?": the longer the wait for Earth, the more the
+  crew must be able to act alone first.
+
+### The side panel
+
+The triage verdict stays on top; three tabs (`src/ui/panel/`) disclose the rest step by step, all following the
+body system selected in 3D:
+
+1. **Overview**: active alerts, then one compact card per indicator (value, unit, status, 7-day sparkline).
+   Explanations sit behind a "?" button; mission background is folded away.
+2. **Trends** (`TrendChart.ts`): one indicator over 24 h, 7 days, 14 days or the recorded mission, with the
+   person's usual range (95%) when a baseline exists, a point readout (time, value, z-score), markers for
+   treatments and reported discomfort, and an optional second indicator on its own axis.
+3. **Protocol & evidence**: the collapsible Detect → Treat → Verify loop, authority levels, citations and
+   evidence class, for the selected indicator or system only.
 
 ### The 3D body
 

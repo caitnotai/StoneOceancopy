@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import type { HealthStore } from '../data/HealthStore';
 import { SYSTEMS } from '../domain/catalog/systems';
-import { STATUS_GLYPH, STATUS_LABEL } from '../domain/status';
+import { STATUS_COLOR, STATUS_GLYPH, STATUS_LABEL } from '../domain/status';
+import type { TwinView } from '../domain/twinView';
 import { SYSTEM_IDS, type Evaluation, type SystemId } from '../domain/types';
 import { createBackdrop } from './backdrop';
 import type { BodyModel, Vitals } from './BodyModel';
+import { HealthTwin } from './HealthTwin';
 import { Picker } from './Picker';
 import { RadiationField } from './RadiationField';
 import { SceneManager } from './SceneManager';
+import { SymptomMarkers } from './SymptomMarkers';
 import { SystemVisuals } from './SystemVisuals';
 
 const MINUTES_PER_DAY = 1440;
@@ -17,6 +20,8 @@ const WHOLE_BODY_HEIGHT = 1.1;
 export interface BodyViewportOptions {
   /** URL of the anatomical model (GLB). */
   modelUrl: string;
+  /** URL of the astronaut model (GLB). While the file does not exist, the astronaut modelled in code is used. */
+  suitUrl: string;
 }
 
 /**
@@ -29,14 +34,18 @@ export interface BodyViewportOptions {
 export class BodyViewport {
   private readonly scene: SceneManager;
   private readonly visuals = new SystemVisuals();
+  private readonly twin = new HealthTwin(this.visuals);
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   private readonly picker: Picker;
   private readonly radiation = new RadiationField();
+  private readonly symptomMarkers = new SymptomMarkers();
   private readonly tooltip: HTMLDivElement;
   private readonly notice: HTMLDivElement;
   private readonly bounds = new Map<SystemId, THREE.Box3>();
   private readonly vitals: Vitals = { heartRateBpm: 62, breathsPerMinute: 14 };
   private readonly unsubscribe: (() => void)[] = [];
   private model: BodyModel | null = null;
+  private readonly overall = new THREE.Color();
 
   constructor(
     private readonly container: HTMLElement,
@@ -45,7 +54,7 @@ export class BodyViewport {
   ) {
     this.scene = new SceneManager(container);
     const backdrop = createBackdrop();
-    this.scene.scene.add(backdrop.object, this.radiation.object);
+    this.scene.scene.add(backdrop.object, this.radiation.object, this.symptomMarkers.object, this.twin.root);
 
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'viewport-tooltip';
@@ -58,11 +67,12 @@ export class BodyViewport {
     this.picker = new Picker(
       this.scene.renderer.domElement,
       this.scene.camera,
-      () => this.model,
+      // The suit while the astronaut is on show, the anatomy once it is revealed.
+      () => this.twin.pickTarget,
       (id) => store.hidden.has(id),
       {
         onHover: (stack, x, y) => this.showHover(stack, x, y),
-        onPick: (stack) => this.pick(stack),
+        onPick: (stack, surface) => this.pick(stack, surface),
       },
     );
 
@@ -71,25 +81,39 @@ export class BodyViewport {
       store.events.on('selection', (id) => this.applySelection(id)),
       store.events.on('hover', (id) => this.visuals.setHovered(id)),
       store.events.on('visibility', (hidden) => this.visuals.setHidden(hidden)),
+      store.events.on('symptoms', () => this.applySymptoms()),
+      store.events.on('symptomDraft', () => this.applySymptoms()),
+      store.events.on('reportMode', () => this.applyReportMode()),
+      store.events.on('twinView', (view) => this.applyView(view)),
+      store.events.on('environment', (env) => this.twin.setWeightless(env.gravityG === 0)),
       this.scene.onFrame((dt, elapsed) => {
         this.picker.update();
         this.visuals.update(dt, elapsed);
         this.model?.update(elapsed, this.vitals);
+        this.twin.update(dt, elapsed, this.vitals);
         this.radiation.setColor(this.visuals.colorOf('radiation'));
         this.radiation.update(dt);
+        this.symptomMarkers.update(elapsed, this.scene.camera);
         backdrop.update(elapsed);
       }),
     );
 
     this.applyEvaluation(store.evaluation);
     this.visuals.setSelected(store.selected);
+    this.applySymptoms();
+    this.applyReportMode();
+    this.twin.setWeightless(store.environment.gravityG === 0);
+    this.twin.setView(store.twinView);
     this.scene.start();
     void this.loadModel(options.modelUrl);
+    void this.loadSuit(options.suitUrl);
   }
 
   dispose(): void {
     this.unsubscribe.forEach((off) => off());
     this.picker.dispose();
+    this.symptomMarkers.dispose();
+    this.twin.dispose();
     this.model?.dispose();
     this.scene.dispose();
     this.tooltip.remove();
@@ -117,20 +141,22 @@ export class BodyViewport {
   }
 
   private setModel(model: BodyModel): void {
-    if (this.model) {
-      this.scene.scene.remove(this.model.root);
-      this.model.dispose();
-    }
+    const previous = this.model;
     this.model = model;
-    this.scene.scene.add(model.root);
+    this.twin.setBody(model, previous);
+    previous?.dispose();
+    // Pins are stored in the body's frame: they follow whichever model is shown.
+    model.root.add(this.symptomMarkers.object);
     this.visuals.setModel(model);
     this.bounds.clear();
     for (const [id, layer] of model.layers) this.bounds.set(id, new THREE.Box3().setFromObject(layer.group));
+    this.symptomMarkers.object.visible = this.store.twinView !== 'astronaut';
     this.applySelection(this.store.selected);
   }
 
   private applyEvaluation(evaluation: Evaluation): void {
     for (const id of SYSTEM_IDS) this.visuals.setStatus(id, evaluation.systems[id].status);
+    this.twin.setStatusColor(this.overall.set(STATUS_COLOR[evaluation.triage.status]));
 
     const heartRate = evaluation.systems.cardiovascular.indicators.find((i) => i.def.id === 'heartRate')?.latest?.value;
     if (heartRate) this.vitals.heartRateBpm = heartRate;
@@ -154,7 +180,21 @@ export class BodyViewport {
   }
 
   /** Clicking the same spot again steps to the next system underneath ("go deeper"). */
-  private pick(stack: SystemId[]): void {
+  private pick(stack: SystemId[], surface: THREE.Vector3 | null): void {
+    if (this.store.twinView === 'astronaut') {
+      // A click on the astronaut is the same invitation as the button: explore the body.
+      if (stack.length > 0) this.store.setTwinView('scan');
+      return;
+    }
+    if (this.store.reportMode) {
+      // Reporting discomfort: the click marks a spot instead of selecting a system.
+      if (!surface || stack.length === 0 || !this.model) return;
+      const { x, y, z } = this.model.root.worldToLocal(surface.clone());
+      // Radiation exposure surrounds the whole figure: it is a dose, not a place that can hurt.
+      const anatomical = stack.filter((id) => id !== 'radiation');
+      this.store.setSymptomDraft({ position: { x, y, z }, systems: anatomical.length > 0 ? anatomical : stack });
+      return;
+    }
     if (stack.length === 0) {
       this.store.select(null);
       return;
@@ -163,16 +203,70 @@ export class BodyViewport {
     this.store.select(stack[(current + 1) % stack.length]);
   }
 
+  /** The astronaut is the model at `url` when that file exists; otherwise the one modelled in code. */
+  private async loadSuit(url: string): Promise<void> {
+    const { GltfSuit } = await import('./suit/GltfSuit');
+    const suit = await GltfSuit.load(url);
+    if (suit) {
+      this.twin.setSuit(suit);
+      return;
+    }
+    const { ProceduralSuit } = await import('./suit/ProceduralSuit');
+    this.twin.setSuit(new ProceduralSuit());
+  }
+
+  private applyView(view: TwinView): void {
+    const leavingAstronaut = this.twin.view === 'astronaut';
+    this.twin.setView(view);
+    this.symptomMarkers.object.visible = view !== 'astronaut';
+    // Starting to explore: bring the figure round to face the viewer, whole body in frame.
+    if (leavingAstronaut && !this.store.selected) this.scene.faceFront(this.reducedMotion ? 0 : 1.6);
+    if (view === 'astronaut') {
+      this.tooltip.hidden = true;
+      this.scene.focusOn(null);
+    }
+  }
+
+  private applySymptoms(): void {
+    const draft = this.store.symptomDraft;
+    this.symptomMarkers.set([
+      ...this.store.symptoms.map((report) => ({ key: `report-${report.id}`, position: report.position, intensity: report.intensity, draft: false })),
+      ...(draft ? [{ key: 'draft', position: draft.position, intensity: 5, draft: true }] : []),
+    ]);
+  }
+
+  private applyReportMode(): void {
+    const reporting = this.store.reportMode;
+    this.container.classList.toggle('is-reporting', reporting);
+    this.scene.renderer.domElement.style.cursor = reporting ? 'crosshair' : 'grab';
+    // Hold the figure still while a spot is being chosen.
+    if (reporting) this.scene.controls.autoRotate = false;
+  }
+
   private showHover(stack: SystemId[], clientX: number, clientY: number): void {
+    if (this.store.twinView === 'astronaut') {
+      const over = stack.length > 0;
+      this.scene.renderer.domElement.style.cursor = over ? 'pointer' : 'grab';
+      this.tooltip.hidden = !over;
+      if (!over) return;
+      delete this.tooltip.dataset.status;
+      this.tooltip.replaceChildren(
+        Object.assign(document.createElement('span'), { className: 'status-glyph', textContent: '' }),
+        Object.assign(document.createElement('strong'), { textContent: 'Explore my body' }),
+        Object.assign(document.createElement('small'), { textContent: 'Click the astronaut to see inside' }),
+      );
+      this.placeTooltip(clientX, clientY);
+      return;
+    }
     const id = stack[0] ?? null;
     this.store.hover(id);
-    this.scene.renderer.domElement.style.cursor = id ? 'pointer' : 'grab';
+    const reporting = this.store.reportMode;
+    this.scene.renderer.domElement.style.cursor = reporting ? 'crosshair' : id ? 'pointer' : 'grab';
     if (!id) {
       this.tooltip.hidden = true;
       return;
     }
     const status = this.store.evaluation.systems[id].status;
-    const rect = this.container.getBoundingClientRect();
     this.tooltip.hidden = false;
     this.tooltip.dataset.status = status;
     this.tooltip.replaceChildren(
@@ -180,11 +274,18 @@ export class BodyViewport {
       Object.assign(document.createElement('strong'), { textContent: SYSTEMS[id].name }),
       Object.assign(document.createElement('span'), { className: 'tooltip-status', textContent: STATUS_LABEL[status] }),
     );
-    if (stack.length > 1) {
+    if (reporting) {
+      this.tooltip.appendChild(Object.assign(document.createElement('small'), { textContent: 'Click to mark the discomfort here' }));
+    } else if (stack.length > 1) {
       this.tooltip.appendChild(
         Object.assign(document.createElement('small'), { textContent: `Click again for ${SYSTEMS[stack[1]].name.toLowerCase()}` }),
       );
     }
+    this.placeTooltip(clientX, clientY);
+  }
+
+  private placeTooltip(clientX: number, clientY: number): void {
+    const rect = this.container.getBoundingClientRect();
     const x = Math.min(clientX - rect.left + 16, rect.width - 220);
     this.tooltip.style.transform = `translate(${Math.max(8, x)}px, ${clientY - rect.top + 16}px)`;
   }

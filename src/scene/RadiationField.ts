@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 
-const MAX_PARTICLES = 520;
+const MAX_PARTICLES = 100;
 const RADIUS = 2.4;
 const CENTER = new THREE.Vector3(0, 0.9, 0);
-const STREAK = 0.11;
+const STREAK = 0.045;
 
 /**
  * Energetic particles streaking through the cabin. Their number follows the current dose
@@ -30,7 +30,7 @@ export class RadiationField {
     geometry.setDrawRange(0, 0);
     this.material = new THREE.LineBasicMaterial({
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.2,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -65,7 +65,7 @@ export class RadiationField {
     const start = new THREE.Vector3().randomDirection().multiplyScalar(RADIUS * 0.98).add(CENTER);
     const aim = new THREE.Vector3().randomDirection().multiplyScalar(Math.random() * 1.1).add(CENTER);
     this.directions[i].copy(aim).sub(start).normalize();
-    this.speeds[i] = 2.2 + Math.random() * 2.6;
+    this.speeds[i] = 0.35 + Math.random() * 0.45;
     this.heads[i].copy(start);
     if (anywhere) this.heads[i].addScaledVector(this.directions[i], Math.random() * RADIUS * 1.6);
   }
