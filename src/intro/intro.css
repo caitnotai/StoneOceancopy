@@ -1,0 +1,382 @@
+/* The introduction: a full-screen layer over the app. Uses the app's tokens (styles.css). */
+.intro {
+  --intro-ink: #f3f6ff;
+  --intro-ink-2: #b9c6e4;
+  --intro-line: rgba(150, 190, 255, 0.24);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  color: var(--intro-ink);
+  /* The night sky itself. It also stands in for the 3D scene when WebGL is unavailable. */
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(34, 78, 160, 0.28), transparent 60%),
+    radial-gradient(90% 70% at 80% 100%, rgba(22, 48, 110, 0.3), transparent 65%),
+    linear-gradient(180deg, #040a1c 0%, #020510 100%);
+}
+
+.intro:focus {
+  outline: none;
+}
+
+.intro-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Keeps text readable while the Earth still fills the frame. */
+.intro-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 5, 16, 0) 30%, rgba(2, 5, 16, 0.62) 68%, rgba(2, 5, 16, 0.9) 100%);
+  pointer-events: none;
+}
+
+.intro-curtain {
+  position: absolute;
+  inset: 0;
+  background: #020510;
+  pointer-events: none;
+}
+
+/* ---------- The film ---------- */
+.intro-cinema {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.2vh, 22px);
+  padding: 0 24px max(clamp(20px, 5vh, 48px), env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.intro-lines {
+  display: grid;
+  justify-items: center;
+  align-items: end;
+  max-width: 22em;
+  font-size: clamp(19px, 1.6vw + 10px, 30px);
+}
+
+.intro-line {
+  grid-area: 1 / 1;
+  font-weight: 300;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+  text-shadow: 0 2px 22px rgba(2, 5, 16, 0.95), 0 0 2px rgba(2, 5, 16, 0.6);
+}
+
+.intro-word {
+  display: inline-block;
+  white-space: pre;
+  will-change: transform, opacity, filter;
+}
+
+.intro-title {
+  /* The trailing space of letter-spacing would push the word off center. */
+  margin-right: -0.42em;
+  font-size: clamp(40px, 6vw + 12px, 88px);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: 0.42em;
+  text-shadow: 0 0 42px rgba(110, 170, 255, 0.45);
+}
+
+.intro-subtitle {
+  margin-top: 12px;
+  color: var(--intro-ink-2);
+  font-size: clamp(14px, 0.6vw + 11px, 18px);
+  letter-spacing: 0.04em;
+}
+
+.intro-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: clamp(4px, 1.5vh, 14px);
+}
+
+.intro-button {
+  min-height: 44px;
+  padding: 0 26px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    color 0.2s;
+}
+
+.intro-button:focus-visible {
+  outline: 2px solid #cfe0ff;
+  outline-offset: 3px;
+}
+
+.intro-button-primary {
+  min-width: 220px;
+  background: linear-gradient(180deg, #4a97f0, #2f76d4);
+  border-color: rgba(190, 220, 255, 0.5);
+  color: #fff;
+  box-shadow: 0 6px 28px rgba(57, 135, 229, 0.35);
+}
+
+.intro-button-primary:hover {
+  background: linear-gradient(180deg, #5aa4f6, #3982e0);
+  box-shadow: 0 6px 34px rgba(57, 135, 229, 0.55);
+}
+
+.intro-button-quiet {
+  background: transparent;
+  color: var(--intro-ink-2);
+}
+
+.intro-button-quiet:hover {
+  color: var(--intro-ink);
+  border-color: var(--intro-line);
+}
+
+/* Reduced motion: the three lines are shown together instead of in sequence. */
+.intro.is-still .intro-lines {
+  gap: 6px;
+  font-size: clamp(17px, 1.2vw + 10px, 24px);
+}
+.intro.is-still .intro-line {
+  grid-area: auto;
+}
+
+/* ---------- Welcome ---------- */
+.intro-welcome,
+.intro-greeting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.intro-card {
+  width: min(100%, 520px);
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid var(--intro-line);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(20, 34, 68, 0.62), rgba(8, 14, 32, 0.68));
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(200, 225, 255, 0.14),
+    0 0 0 1px rgba(2, 5, 16, 0.4),
+    0 0 60px rgba(57, 135, 229, 0.16),
+    0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.intro-step {
+  display: flex;
+  flex-direction: column;
+}
+
+.intro-eyebrow {
+  margin-bottom: 8px;
+  color: #8fb8f5;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.intro-card-title {
+  font-size: clamp(24px, 2vw + 14px, 32px);
+  font-weight: 350;
+  line-height: 1.15;
+  letter-spacing: 0.005em;
+}
+
+.intro-card-lead {
+  margin-top: 8px;
+  color: var(--intro-ink-2);
+  font-size: 16px;
+}
+
+.intro-label {
+  margin-top: 28px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.intro-input {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: 1px solid var(--intro-line);
+  border-radius: 12px;
+  background: rgba(2, 6, 18, 0.55);
+  font-size: 17px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.intro-input::placeholder {
+  color: #7d8bad;
+}
+
+.intro-input:focus {
+  outline: none;
+  border-color: #6faaf2;
+  box-shadow: 0 0 0 3px rgba(57, 135, 229, 0.3);
+}
+
+.intro-input[aria-invalid='true'] {
+  border-color: #f08a8a;
+}
+
+.intro-error {
+  min-height: 20px;
+  margin-top: 6px;
+  color: #ffb0b0;
+  font-size: 13px;
+}
+
+.intro-card-note {
+  margin-top: 16px;
+  color: var(--intro-ink-2);
+  font-size: 13.5px;
+}
+
+.intro-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.intro-card-actions .intro-button-primary {
+  min-width: 150px;
+}
+
+.intro-habitats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.intro-habitat {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px 12px;
+  border: 1px solid var(--intro-line);
+  border-radius: 14px;
+  background: rgba(2, 6, 18, 0.4);
+  color: var(--intro-ink-2);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+
+/* Five options: three on the first row, two centered on the second. */
+.intro-habitat:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.intro-habitat:hover {
+  border-color: rgba(170, 205, 255, 0.5);
+  color: var(--intro-ink);
+}
+
+.intro-habitat:has(input:checked) {
+  border-color: #7db4f7;
+  background: rgba(57, 135, 229, 0.2);
+  color: #fff;
+  box-shadow: 0 0 24px rgba(57, 135, 229, 0.25);
+}
+
+.intro-habitat:has(input:focus-visible) {
+  outline: 2px solid #cfe0ff;
+  outline-offset: 2px;
+}
+
+.intro-habitat-icon {
+  display: grid;
+  color: #9cc4ff;
+}
+
+.intro-habitat:has(input:checked) .intro-habitat-icon {
+  color: #fff;
+}
+
+.intro-habitat-label {
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.25;
+}
+
+/* ---------- Greeting ---------- */
+.intro-greeting {
+  align-content: center;
+  padding-top: 18vh;
+  gap: 12px;
+  text-align: center;
+  background: radial-gradient(60% 45% at 50% 50%, rgba(2, 5, 16, 0.55), transparent 75%);
+}
+
+.intro-greeting-title {
+  font-size: clamp(34px, 4vw + 16px, 68px);
+  font-weight: 250;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 30px rgba(2, 5, 16, 0.9);
+}
+
+.intro-greeting-text {
+  color: var(--intro-ink-2);
+  font-size: clamp(17px, 1vw + 12px, 24px);
+  font-weight: 300;
+  text-wrap: balance;
+  text-shadow: 0 2px 22px rgba(2, 5, 16, 0.95);
+}
+
+@media (max-width: 460px) {
+  .intro-habitats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .intro-habitat,
+  .intro-habitat:nth-child(4) {
+    grid-column: auto;
+  }
+  .intro-habitat:last-child {
+    grid-column: 1 / -1;
+  }
+  .intro-card-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-button,
+  .intro-input,
+  .intro-habitat {
+    transition: none;
+  }
+}
