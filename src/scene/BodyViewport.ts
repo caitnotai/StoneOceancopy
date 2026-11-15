@@ -8,6 +8,7 @@ import type { BodyModel, Vitals } from './BodyModel';
 import { Picker } from './Picker';
 import { RadiationField } from './RadiationField';
 import { SceneManager } from './SceneManager';
+import { SymptomMarkers } from './SymptomMarkers';
 import { SystemVisuals } from './SystemVisuals';
 
 const MINUTES_PER_DAY = 1440;
@@ -31,6 +32,7 @@ export class BodyViewport {
   private readonly visuals = new SystemVisuals();
   private readonly picker: Picker;
   private readonly radiation = new RadiationField();
+  private readonly symptomMarkers = new SymptomMarkers();
   private readonly tooltip: HTMLDivElement;
   private readonly notice: HTMLDivElement;
   private readonly bounds = new Map<SystemId, THREE.Box3>();
@@ -45,7 +47,7 @@ export class BodyViewport {
   ) {
     this.scene = new SceneManager(container);
     const backdrop = createBackdrop();
-    this.scene.scene.add(backdrop.object, this.radiation.object);
+    this.scene.scene.add(backdrop.object, this.radiation.object, this.symptomMarkers.object);
 
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'viewport-tooltip';
@@ -62,7 +64,7 @@ export class BodyViewport {
       (id) => store.hidden.has(id),
       {
         onHover: (stack, x, y) => this.showHover(stack, x, y),
-        onPick: (stack) => this.pick(stack),
+        onPick: (stack, surface) => this.pick(stack, surface),
       },
     );
 
@@ -71,18 +73,24 @@ export class BodyViewport {
       store.events.on('selection', (id) => this.applySelection(id)),
       store.events.on('hover', (id) => this.visuals.setHovered(id)),
       store.events.on('visibility', (hidden) => this.visuals.setHidden(hidden)),
+      store.events.on('symptoms', () => this.applySymptoms()),
+      store.events.on('symptomDraft', () => this.applySymptoms()),
+      store.events.on('reportMode', () => this.applyReportMode()),
       this.scene.onFrame((dt, elapsed) => {
         this.picker.update();
         this.visuals.update(dt, elapsed);
         this.model?.update(elapsed, this.vitals);
         this.radiation.setColor(this.visuals.colorOf('radiation'));
         this.radiation.update(dt);
+        this.symptomMarkers.update(elapsed, this.scene.camera);
         backdrop.update(elapsed);
       }),
     );
 
     this.applyEvaluation(store.evaluation);
     this.visuals.setSelected(store.selected);
+    this.applySymptoms();
+    this.applyReportMode();
     this.scene.start();
     void this.loadModel(options.modelUrl);
   }
@@ -90,6 +98,7 @@ export class BodyViewport {
   dispose(): void {
     this.unsubscribe.forEach((off) => off());
     this.picker.dispose();
+    this.symptomMarkers.dispose();
     this.model?.dispose();
     this.scene.dispose();
     this.tooltip.remove();
@@ -123,6 +132,8 @@ export class BodyViewport {
     }
     this.model = model;
     this.scene.scene.add(model.root);
+    // Pins are stored in the body's frame: they follow whichever model is shown.
+    model.root.add(this.symptomMarkers.object);
     this.visuals.setModel(model);
     this.bounds.clear();
     for (const [id, layer] of model.layers) this.bounds.set(id, new THREE.Box3().setFromObject(layer.group));
@@ -154,7 +165,16 @@ export class BodyViewport {
   }
 
   /** Clicking the same spot again steps to the next system underneath ("go deeper"). */
-  private pick(stack: SystemId[]): void {
+  private pick(stack: SystemId[], surface: THREE.Vector3 | null): void {
+    if (this.store.reportMode) {
+      // Reporting discomfort: the click marks a spot instead of selecting a system.
+      if (!surface || stack.length === 0 || !this.model) return;
+      const { x, y, z } = this.model.root.worldToLocal(surface.clone());
+      // Radiation exposure surrounds the whole figure: it is a dose, not a place that can hurt.
+      const anatomical = stack.filter((id) => id !== 'radiation');
+      this.store.setSymptomDraft({ position: { x, y, z }, systems: anatomical.length > 0 ? anatomical : stack });
+      return;
+    }
     if (stack.length === 0) {
       this.store.select(null);
       return;
@@ -163,10 +183,27 @@ export class BodyViewport {
     this.store.select(stack[(current + 1) % stack.length]);
   }
 
+  private applySymptoms(): void {
+    const draft = this.store.symptomDraft;
+    this.symptomMarkers.set([
+      ...this.store.symptoms.map((report) => ({ key: `report-${report.id}`, position: report.position, intensity: report.intensity, draft: false })),
+      ...(draft ? [{ key: 'draft', position: draft.position, intensity: 5, draft: true }] : []),
+    ]);
+  }
+
+  private applyReportMode(): void {
+    const reporting = this.store.reportMode;
+    this.container.classList.toggle('is-reporting', reporting);
+    this.scene.renderer.domElement.style.cursor = reporting ? 'crosshair' : 'grab';
+    // Hold the figure still while a spot is being chosen.
+    if (reporting) this.scene.controls.autoRotate = false;
+  }
+
   private showHover(stack: SystemId[], clientX: number, clientY: number): void {
     const id = stack[0] ?? null;
     this.store.hover(id);
-    this.scene.renderer.domElement.style.cursor = id ? 'pointer' : 'grab';
+    const reporting = this.store.reportMode;
+    this.scene.renderer.domElement.style.cursor = reporting ? 'crosshair' : id ? 'pointer' : 'grab';
     if (!id) {
       this.tooltip.hidden = true;
       return;
@@ -180,7 +217,9 @@ export class BodyViewport {
       Object.assign(document.createElement('strong'), { textContent: SYSTEMS[id].name }),
       Object.assign(document.createElement('span'), { className: 'tooltip-status', textContent: STATUS_LABEL[status] }),
     );
-    if (stack.length > 1) {
+    if (reporting) {
+      this.tooltip.appendChild(Object.assign(document.createElement('small'), { textContent: 'Click to mark the discomfort here' }));
+    } else if (stack.length > 1) {
       this.tooltip.appendChild(
         Object.assign(document.createElement('small'), { textContent: `Click again for ${SYSTEMS[stack[1]].name.toLowerCase()}` }),
       );
