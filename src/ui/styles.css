@@ -1883,6 +1883,165 @@ details p {
   display: none;
 }
 
+/* ---- Offline voice dictation (report notes) ---- */
+.mic-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.mic-button:hover:not(:disabled) {
+  border-color: var(--symptom);
+}
+
+.mic-button:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+/* A microphone drawn in CSS: no icon font, no network. */
+.mic-icon {
+  position: relative;
+  width: 8px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.mic-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.mic-button[data-state='listening'] {
+  border-color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 22%, var(--surface));
+}
+
+.mic-button[data-state='listening'] .mic-icon {
+  border-color: #ff8a8a;
+  background: #ff8a8a;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+.mic-button[data-state='error'] {
+  border-color: var(--warning);
+}
+
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-button[data-state='listening'] .mic-icon {
+    animation: none;
+  }
+}
+
+.dictation {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dictation-partial {
+  padding: 6px 8px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.dictation-committed {
+  color: var(--text);
+}
+
+.dictation-pending {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.dictation-status {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.dictation-status:empty,
+.dictation-error:empty {
+  display: none;
+}
+
+.dictation-error {
+  padding: 6px 8px;
+  border-left: 3px solid var(--warning);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.dictation-privacy {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.note-suggestions {
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+
+.note-suggestions legend {
+  padding: 0 4px;
+}
+
+.note-suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-suggestion {
+  align-items: flex-start;
+}
+
+.note-suggestion input {
+  margin-top: 3px;
+  accent-color: var(--symptom);
+}
+
+.note-suggestion-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-suggestion-text strong {
+  color: var(--text);
+  font-weight: 550;
+}
+
+.note-suggestion-why {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
 .symptom-actions {
   display: flex;
   justify-content: flex-end;
