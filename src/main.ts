@@ -1,5 +1,5 @@
 import type { AppActions } from './app/actions';
-import { APP_TITLE, HISTORY_DAYS, MISSION_START_MINUTES } from './config';
+import { APP_TITLE, HISTORY_DAYS, MISSION_START_MINUTES, VOSK_MODEL_PATH } from './config';
 import { HealthStore } from './data/HealthStore';
 import { MissionClock } from './data/MissionClock';
 import { scenarioById } from './data/sources/scenarios';
@@ -10,6 +10,7 @@ import type { IntroOptions } from './intro/IntroExperience';
 import { environmentFor, loadProfile, type CrewProfile } from './intro/profile';
 import type { HealthStatus } from './domain/types';
 import { BodyViewport } from './scene/BodyViewport';
+import { DictationController } from './speech/DictationController';
 import { h } from './ui/dom';
 import { SidePanel } from './ui/SidePanel';
 import { SimulatorBar, type SimulatorState } from './ui/SimulatorBar';
@@ -91,7 +92,13 @@ function bootstrap(profile: CrewProfile): void {
   new SystemList($('systems'), store);
   new SidePanel($('panel'), store, actions);
   new SimulatorBar($('simulator'), actions, simulatorState);
-  new SymptomReporter($('viewport-tools'), $('symptom-form'), $('hint'), store, actions);
+  // Offline dictation for the report notes. Vosk and its model load on the first press only,
+  // and the store never sees anything but the text the crew member chose to save.
+  const dictation = new DictationController(async () => {
+    const { VoskEngine } = await import('./speech/vosk/VoskEngine');
+    return new VoskEngine({ modelUrl: `${import.meta.env.BASE_URL}${VOSK_MODEL_PATH}` });
+  });
+  new SymptomReporter($('viewport-tools'), $('symptom-form'), $('hint'), store, actions, dictation);
   new TwinViewControl($('viewport-tools'), $('hint'), store);
 
   const statuses: HealthStatus[] = ['nominal', 'caution', 'critical', 'unknown'];
