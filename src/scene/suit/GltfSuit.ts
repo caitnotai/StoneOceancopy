@@ -1,26 +1,21 @@
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { HOLOGRAM_COLOR, type AstronautSuit } from './AstronautSuit';
+import type { AstronautSuit } from './AstronautSuit';
+import { SuitFade } from './SuitFade';
 
 /** The suit is fitted to stand this tall, a little over the 1.76 m body it encloses. */
 const SUIT_HEIGHT_M = 1.84;
 
-type TintedMaterial = THREE.Material & { color?: THREE.Color; emissive?: THREE.Color };
-interface Part {
-  material: TintedMaterial;
-  color: THREE.Color | null;
-  emissive: THREE.Color | null;
-}
-
 /**
- * A suit loaded from `public/models/astronaut.glb`. Whatever its original size and origin,
+ * The astronaut: a suit loaded from `public/models/astronaut.glb`. Whatever its original size and origin,
  * it is fitted to the body's frame: feet on the ground, centred, facing +z as authored.
  */
 export class GltfSuit implements AstronautSuit {
   readonly root = new THREE.Group();
-  private readonly parts: Part[] = [];
-  private readonly hologram = new THREE.Color(HOLOGRAM_COLOR);
+  readonly pickables: THREE.Mesh[] = [];
+  private readonly materials: THREE.Material[] = [];
+  private readonly fade: SuitFade;
   private readonly fitted = new THREE.Group();
 
   /** Resolves to null when there is no usable model at `url`: the caller keeps its fallback. */
@@ -54,33 +49,24 @@ export class GltfSuit implements AstronautSuit {
       if (!copy) {
         copy = material.clone();
         copies.set(material, copy);
-        const tinted = copy as TintedMaterial;
-        this.parts.push({ material: tinted, color: tinted.color?.clone() ?? null, emissive: tinted.emissive?.clone() ?? null });
+        this.materials.push(copy);
       }
       return copy;
     };
+    const meshes: THREE.Mesh[] = [];
     scene.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
-      object.renderOrder = 4;
       object.material = Array.isArray(object.material) ? object.material.map(own) : own(object.material);
+      meshes.push(object);
     });
+    this.pickables.push(...meshes);
+    this.fade = new SuitFade(meshes);
   }
 
   setOpacity(opacity: number): void {
     this.root.visible = opacity > 0.01;
-    const holo = 1 - THREE.MathUtils.smoothstep(opacity, 0.15, 0.85);
-    const solid = opacity > 0.98;
-    for (const { material, color, emissive } of this.parts) {
-      if (material.transparent === solid) {
-        material.transparent = !solid;
-        material.needsUpdate = true;
-      }
-      material.opacity = opacity;
-      material.depthWrite = solid;
-      if (color && material.color) material.color.copy(color).lerp(this.hologram, holo);
-      if (emissive && material.emissive) material.emissive.copy(emissive).lerp(this.hologram, 0.55 * holo);
-    }
-    this.root.scale.setScalar(1 + 0.025 * holo);
+    this.fade.setOpacity(opacity);
+    this.root.scale.setScalar(1 + 0.02 * this.fade.hologramAt(opacity));
   }
 
   /** A loaded model has no agreed place for a status light; the dashboard shows the status instead. */
@@ -94,9 +80,10 @@ export class GltfSuit implements AstronautSuit {
   }
 
   dispose(): void {
+    this.fade.dispose();
     this.fitted.traverse((object) => {
       if (object instanceof THREE.Mesh) object.geometry.dispose();
     });
-    this.parts.forEach((part) => part.material.dispose());
+    this.materials.forEach((material) => material.dispose());
   }
 }

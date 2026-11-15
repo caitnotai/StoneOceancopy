@@ -212,10 +212,16 @@ The dashboard opens on a friendly astronaut; the anatomy appears only when the c
   GSAP eases opacities and the camera only; the Three.js frame loop is unchanged.
 - The suit is visual only. Picking still goes through `Picker.ts` and `body.glb`; while the astronaut is shown
   there is nothing to pick.
-- At rest the anatomy is a neutral grey-blue. A body system shows its status color only when it is selected
-  or needs attention (caution or critical).
-- `public/models/astronaut.glb` is optional and not in the repository yet: without it, a suit generated in
-  code is used (see `public/models/README.md`).
+- In `anatomy` the body rests in a neutral grey-blue; a system shows its status color only when it is selected
+  or needs attention. In `scan` the suit is a hologram (22% opacity) and every system is faint except the
+  selected one.
+- A see-through suit is drawn in two passes, depth then color (`suit/SuitFade.ts`), so overlapping parts of
+  the suit do not show through each other.
+- The astronaut is modelled in code (`src/scene/suit/ProceduralSuit.ts`, built with the small kit in
+  `suit/shapes.ts`). A `public/models/astronaut.glb`, if added, replaces it automatically (see
+  `public/models/README.md`).
+- Clicking the astronaut starts the exploration, like the button. The click still goes through `Picker.ts`:
+  `HealthTwin.pickTarget` hands it the suit while the astronaut is shown and the anatomy afterwards.
 - The figure breathes, and drifts very slightly in microgravity (station, transit). Reduced motion turns
   both off and makes every transition immediate.
 

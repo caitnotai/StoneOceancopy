@@ -12,7 +12,10 @@ const COLORS: Record<HealthStatus, THREE.Color> = {
 
 /** The body at rest: a calm grey-blue, so that only what matters carries a status color. */
 const NEUTRAL = new THREE.Color(0x7f95b8);
-const RESTING_OPACITY = 0.62;
+/** While the body is being scanned through the suit, everything but the selected system steps back. */
+const SUBDUED_OPACITY = 0.2;
+const SUBDUED_FLAGGED_OPACITY = 0.42;
+const SUBDUED_HOVER_OPACITY = 0.6;
 const DIMMED_OPACITY = 0.09;
 const DIMMED_HOVER_OPACITY = 0.3;
 /** The order in which the anatomy comes up when it is revealed: frame first, wrapping tissue last. */
@@ -39,6 +42,7 @@ export class SystemVisuals {
   private hovered: SystemId | null = null;
   private hidden: ReadonlySet<SystemId> = new Set();
   private reveal = 1;
+  private subdued = 0;
 
   constructor() {
     for (const id of SYSTEM_IDS) {
@@ -72,6 +76,15 @@ export class SystemVisuals {
     this.reveal = reveal;
   }
 
+  /**
+   * 0 = the anatomy as it normally looks; 1 = subdued, for the scan view: every system is
+   * faint except the selected one. A system that needs attention keeps its status color,
+   * a little stronger than the rest, but does not compete with the selection.
+   */
+  setSubdued(subdued: number): void {
+    this.subdued = subdued;
+  }
+
   /** The status color of a system, whether or not it is currently drawn in it. */
   statusColorOf(id: SystemId): THREE.Color {
     return COLORS[this.state.get(id)?.status ?? 'unknown'];
@@ -92,7 +105,9 @@ export class SystemVisuals {
       // Only what is selected or needs attention shows its status color; the rest stays neutral.
       const flagged = s.status === 'caution' || s.status === 'critical';
       const highlighted = isSelected || flagged;
-      const targetOpacity = dimmed ? (isHovered ? DIMMED_HOVER_OPACITY : DIMMED_OPACITY) : highlighted || isHovered ? 1 : RESTING_OPACITY;
+      const mix = (normal: number, subdued: number): number => normal + (subdued - normal) * this.subdued;
+      const resting = isSelected ? 1 : isHovered ? mix(1, SUBDUED_HOVER_OPACITY) : flagged ? mix(1, SUBDUED_FLAGGED_OPACITY) : mix(1, SUBDUED_OPACITY);
+      const targetOpacity = dimmed ? (isHovered ? DIMMED_HOVER_OPACITY : DIMMED_OPACITY) : resting;
       // Alarm pulse: a second, non-color signal that something needs attention.
       const pulse =
         s.status === 'critical'
@@ -101,7 +116,7 @@ export class SystemVisuals {
             ? 0.25 * (0.5 + 0.5 * Math.sin(elapsed * 2.6))
             : 0;
       // Systems that need attention glow more than healthy ones, so they stand out at a glance.
-      const alert = s.status === 'critical' ? 0.55 : s.status === 'caution' ? 0.35 : 0;
+      const alert = (s.status === 'critical' ? 0.55 : s.status === 'caution' ? 0.35 : 0) * (isSelected ? 1 : 1 - 0.6 * this.subdued);
       const targetEmphasis = (isSelected ? 0.45 : 0) + (isHovered ? 0.35 : 0) + alert + pulse;
 
       s.color.lerp(highlighted ? COLORS[s.status] : NEUTRAL, ease);

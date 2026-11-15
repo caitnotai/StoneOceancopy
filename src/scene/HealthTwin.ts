@@ -4,17 +4,25 @@ import type { TwinView } from '../domain/twinView';
 import type { BodyModel, Vitals } from './BodyModel';
 import { breath } from './animation';
 import type { AstronautSuit } from './suit/AstronautSuit';
-import { HOLOGRAM_COLOR } from './suit/AstronautSuit';
+import { HOLOGRAM_COLOR } from './suit/SuitFade';
 import type { SystemVisuals } from './SystemVisuals';
 
-/** What each view looks like once it has settled. */
+/**
+ * What each view looks like once it has settled:
+ *  - astronaut: the suit, solid; no anatomy;
+ *  - scan:      the suit as a hologram over a subdued anatomy, where only the selected system stands out;
+ *  - anatomy:   no suit; the anatomy as it normally looks.
+ * `suit` is the suit's opacity, `anatomy` how much of the anatomy is revealed, `scan` how subdued it is.
+ */
 const LOOK: Record<TwinView, { suit: number; anatomy: number; scan: number }> = {
   astronaut: { suit: 1, anatomy: 0, scan: 0 },
-  scan: { suit: 0.07, anatomy: 1, scan: 1 },
+  scan: { suit: 0.22, anatomy: 1, scan: 1 },
   anatomy: { suit: 0, anatomy: 1, scan: 0 },
 };
 
 const BODY_HEIGHT = 1.8;
+/** What a hit on the suit is tagged with. It is not a body system and never reaches the store. */
+const SUIT_PICK_ID = 'suit';
 
 /**
  * The crew member's twin: a friendly suit on the outside, the anatomy inside, and the
@@ -33,6 +41,8 @@ export class HealthTwin {
   private readonly still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   private readonly statusColor = new THREE.Color(0x898781);
   private suit: AstronautSuit | null = null;
+  private body: BodyModel | null = null;
+  private suitTarget: BodyModel | null = null;
   private current: TwinView = 'astronaut';
   private weightless = false;
   private drift = 0;
@@ -49,9 +59,10 @@ export class HealthTwin {
     });
     this.scanRing = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.418, 96), this.scanMaterial);
     this.scanRing.rotation.x = -Math.PI / 2;
-    this.scanRing.renderOrder = 5;
+    this.scanRing.renderOrder = 6;
     this.root.add(this.scanRing);
     this.visuals.setReveal(this.look.anatomy);
+    this.visuals.setSubdued(this.look.scan);
   }
 
   get view(): TwinView {
@@ -63,9 +74,20 @@ export class HealthTwin {
     return this.current !== 'astronaut' && this.look.anatomy > 0.5;
   }
 
+  /**
+   * What the picker should test the pointer against: the suit while the astronaut is on
+   * show (a click on it starts the exploration), the anatomy once that is revealed, and
+   * nothing in between.
+   */
+  get pickTarget(): BodyModel | null {
+    if (this.current === 'astronaut') return this.suitTarget;
+    return this.explorable ? this.body : null;
+  }
+
   setBody(model: BodyModel | null, previous: BodyModel | null): void {
     if (previous) this.root.remove(previous.root);
     if (model) this.root.add(model.root);
+    this.body = model;
   }
 
   setSuit(suit: AstronautSuit): void {
@@ -74,6 +96,13 @@ export class HealthTwin {
       this.suit.dispose();
     }
     this.suit = suit;
+    // The picker only knows `BodyModel`: the suit is handed to it in that shape, as one
+    // clickable thing with no body systems of its own.
+    for (const mesh of suit.pickables) {
+      mesh.userData.systemId = SUIT_PICK_ID;
+      mesh.userData.pickRank = 0;
+    }
+    this.suitTarget = { root: suit.root, layers: new Map(), pickables: suit.pickables, update: () => undefined, dispose: () => undefined };
     suit.setStatusColor(this.statusColor);
     suit.setOpacity(this.look.suit);
     this.root.add(suit.root);
@@ -105,7 +134,7 @@ export class HealthTwin {
       gsap
         .timeline()
         .to(this.look, { suit: Math.max(target.suit, LOOK.scan.suit), duration: 0.9, ease: 'power2.inOut' }, 0)
-        .to(this.look, { scan: 1, duration: 0.5, ease: 'power1.out' }, 0.2)
+        .set(this.look, { scan: 1 }, 0)
         .to(this.look, { anatomy: 1, duration: 1.9, ease: 'power1.inOut' }, 0.45)
         .to(this.look, { suit: target.suit, scan: target.scan, duration: 0.7, ease: 'power2.out' }, 2.1);
       return;
@@ -115,6 +144,7 @@ export class HealthTwin {
 
   update(dt: number, elapsed: number, vitals: Vitals): void {
     this.visuals.setReveal(this.look.anatomy);
+    this.visuals.setSubdued(this.look.scan);
     this.suit?.setOpacity(this.look.suit);
     this.suit?.update(elapsed, this.still ? 0 : breath(elapsed, vitals));
 
