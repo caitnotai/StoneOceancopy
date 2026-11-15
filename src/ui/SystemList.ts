@@ -12,16 +12,40 @@ function summary(system: SystemEvaluation): string {
 
 /** Left column: every body system with its live status. Mirrors the 3D body. */
 export class SystemList {
-  private readonly list = h('div', { class: 'system-list' });
+  private readonly list = h('div', { class: 'system-list', id: 'system-list' });
+  private readonly title = h('h2', { class: 'section-title' }, 'Body systems');
+  private readonly toggle = h(
+    'button',
+    {
+      class: 'systems-toggle',
+      type: 'button',
+      'aria-controls': 'system-list',
+      'aria-expanded': 'true',
+      'aria-label': 'Collapse body systems',
+      title: 'Collapse body systems',
+    },
+    h('span', { 'aria-hidden': 'true' }, '‹'),
+  );
 
-  constructor(parent: HTMLElement, private readonly store: HealthStore) {
-    parent.append(h('h2', { class: 'section-title' }, 'Body systems'), this.list);
+  constructor(private readonly parent: HTMLElement, private readonly store: HealthStore) {
+    this.toggle.onclick = () => this.setCollapsed(!this.parent.classList.contains('is-collapsed'));
+    parent.append(h('div', { class: 'systems-header' }, this.title, this.toggle), this.list);
     const render = (): void => this.render();
     store.events.on('data', render);
     store.events.on('selection', render);
     store.events.on('hover', render);
     store.events.on('visibility', render);
     render();
+  }
+
+  private setCollapsed(collapsed: boolean): void {
+    this.parent.classList.toggle('is-collapsed', collapsed);
+    this.parent.closest('#app')?.classList.toggle('is-systems-collapsed', collapsed);
+    this.toggle.setAttribute('aria-expanded', String(!collapsed));
+    const label = collapsed ? 'Expand body systems' : 'Collapse body systems';
+    this.toggle.setAttribute('aria-label', label);
+    this.toggle.title = label;
+    this.toggle.firstElementChild!.textContent = collapsed ? '›' : '‹';
   }
 
   private render(): void {
