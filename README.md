@@ -5,7 +5,6 @@ live health indicators, and its status drives its color on an interactive 3D bod
 Built for the NASA Space Apps Challenge 2026, challenge
 *Create Health Monitoring Software for Astronauts on Space Missions*.
 
-> Working title. Change `APP_TITLE` in `src/config.ts` to rename the app.
 
 ## What it does
 
