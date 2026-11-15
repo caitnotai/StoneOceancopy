@@ -188,6 +188,20 @@ Where to extend:
   they are.
 - **Mission-specific reference ranges**: `EnvironmentDef.thresholdOverrides`.
 
+### The introduction
+
+The first visit opens with a short film (`src/intro/`): the camera leaves a procedural Earth, an astronaut
+drifts into view, and three lines explain why the app exists. A welcome card then asks for a name and,
+optionally, the mission habitat, which selects the starting environment.
+
+- Three.js draws the scene (`src/intro/scene/`): the Earth, its atmosphere, the stars and the astronaut are
+  shaders and simple geometry, with no textures or network requests, so it works offline.
+- GSAP directs the camera and the text (`src/intro/IntroExperience.ts`). The scene exposes plain numbers
+  (`IntroSceneState`) and the timeline tweens them.
+- The name and habitat are kept in `localStorage` only. Later visits go straight to the console; the name in
+  the top bar, or `?intro` in the address, replays the film.
+- With "reduce motion" enabled, the film becomes a single still frame with all the text shown at once.
+
 ### The 3D body
 
 The body is built from [BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/desc.html),

@@ -6,6 +6,8 @@ import { scenarioById } from './data/sources/scenarios';
 import { SimulatedSource } from './data/sources/SimulatedSource';
 import { loadSpaceWeather, snapshotSpaceWeather } from './data/spaceWeather';
 import { STATUS_GLYPH, STATUS_LABEL } from './domain/status';
+import type { IntroOptions } from './intro/IntroExperience';
+import { environmentFor, loadProfile, type CrewProfile } from './intro/profile';
 import type { HealthStatus } from './domain/types';
 import { BodyViewport } from './scene/BodyViewport';
 import { h } from './ui/dom';
@@ -24,11 +26,8 @@ import { TopBar } from './ui/TopBar';
  *                                             v
  *                         3D body (scene/)  and  panels (ui/)
  */
-function bootstrap(): void {
-  document.title = APP_TITLE;
-  const $ = (id: string): HTMLElement => document.getElementById(id)!;
-
-  const store = new HealthStore('iss');
+function bootstrap(profile: CrewProfile): void {
+  const store = new HealthStore(environmentFor(profile));
   const clock = new MissionClock(MISSION_START_MINUTES);
   const simulator = new SimulatedSource(clock, () => store.environment);
   simulator.connect(store);
@@ -70,6 +69,21 @@ function bootstrap(): void {
   };
 
   new TopBar($('topbar'), store);
+  // The crew member's name doubles as the way back to the introduction.
+  $('topbar').append(
+    h(
+      'button',
+      {
+        class: 'crew-chip',
+        type: 'button',
+        title: 'Replay the introduction',
+        'aria-label': `${profile.name}: replay the introduction`,
+        onclick: () => playIntro({ profile, behind: $('app'), onEnter: () => {} }),
+      },
+      h('span', { class: 'crew-chip-initial', 'aria-hidden': 'true' }, profile.name.charAt(0).toUpperCase()),
+      h('span', { class: 'crew-chip-name' }, profile.name),
+    ),
+  );
   new SystemList($('systems'), store);
   new SidePanel($('panel'), store, actions);
   new SimulatorBar($('simulator'), actions, simulatorState);
@@ -93,4 +107,33 @@ function bootstrap(): void {
   clock.start();
 }
 
-bootstrap();
+const $ = (id: string): HTMLElement => document.getElementById(id)!;
+
+/**
+ * First visit: the introduction, then the app. Later visits go straight to the app
+ * (add `?intro` to the address, or use the name in the top bar, to watch it again).
+ */
+function start(): void {
+  document.title = APP_TITLE;
+  const profile = loadProfile();
+  const replay = new URLSearchParams(location.search).has('intro');
+  if (profile && !replay) {
+    bootstrap(profile);
+    return;
+  }
+  if (profile) bootstrap(profile);
+  playIntro({ profile, behind: $('app'), onEnter: profile ? () => {} : bootstrap });
+}
+
+/** The introduction (and GSAP) load on demand: returning crew members never download them. */
+function playIntro(options: IntroOptions): void {
+  import('./intro/IntroExperience')
+    .then(({ runIntro }) => runIntro(options))
+    .catch((error: unknown) => {
+      // The introduction is optional; the health console is not.
+      console.error(error);
+      options.onEnter(options.profile ?? { name: 'Crew', habitat: null });
+    });
+}
+
+start();
