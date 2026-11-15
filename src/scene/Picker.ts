@@ -5,10 +5,13 @@ import type { BodyModel } from './BodyModel';
 export interface PickerHandlers {
   /** `stack` lists every system under the pointer, most relevant first. */
   onHover(stack: SystemId[], clientX: number, clientY: number): void;
-  onPick(stack: SystemId[]): void;
+  /** `surface` is the nearest point of the body under the pointer, in world space; null when the click missed. */
+  onPick(stack: SystemId[], surface: THREE.Vector3 | null): void;
 }
 
 const CLICK_TOLERANCE_PX = 5;
+/** A picked spot is lifted this far off the surface, toward the viewer, so a marker placed there is not buried. */
+const SURFACE_LIFT_M = 0.004;
 
 /**
  * Mouse/touch picking of body systems by raycasting. Translucent layers (muscle, skin)
@@ -48,7 +51,8 @@ export class Picker {
         this.down = null;
         // A drag rotates the camera; only a still click selects.
         if (!start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > CLICK_TOLERANCE_PX) return;
-        handlers.onPick(this.stackAt(e.clientX, e.clientY));
+        const { stack, surface } = this.hitsAt(e.clientX, e.clientY);
+        handlers.onPick(stack, surface);
       },
       { signal },
     );
@@ -59,22 +63,25 @@ export class Picker {
     if (!this.pending || this.down) return;
     const { x, y } = this.pending;
     this.pending = null;
-    this.handlers.onHover(this.stackAt(x, y), x, y);
+    this.handlers.onHover(this.hitsAt(x, y).stack, x, y);
   }
 
   dispose(): void {
     this.abort.abort();
   }
 
-  private stackAt(clientX: number, clientY: number): SystemId[] {
+  private hitsAt(clientX: number, clientY: number): { stack: SystemId[]; surface: THREE.Vector3 | null } {
     const model = this.model();
-    if (!model) return [];
+    if (!model) return { stack: [], surface: null };
     const rect = this.dom.getBoundingClientRect();
     this.pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster
+    const visible = this.raycaster
       .intersectObjects(model.pickables, false)
-      .filter((hit) => !this.isHidden(hit.object.userData.systemId as SystemId))
+      .filter((hit) => !this.isHidden(hit.object.userData.systemId as SystemId));
+    // Hits arrive nearest first: the first one is the surface the pointer is on.
+    const surface = visible.length > 0 ? visible[0].point.clone().addScaledVector(this.raycaster.ray.direction, -SURFACE_LIFT_M) : null;
+    const hits = visible
       // Stable sort: solid tissue before translucent layers, nearest first within each.
       .sort((a, b) => (a.object.userData.pickRank as number) - (b.object.userData.pickRank as number));
     const stack: SystemId[] = [];
@@ -82,6 +89,6 @@ export class Picker {
       const id = hit.object.userData.systemId as SystemId;
       if (!stack.includes(id)) stack.push(id);
     }
-    return stack;
+    return { stack, surface };
   }
 }

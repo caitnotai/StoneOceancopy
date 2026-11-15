@@ -6,6 +6,8 @@ import { verifyIntervention, type Intervention } from '../domain/engine/verify';
 import { INDICATOR_RULES } from '../domain/evidence/indicatorRules';
 import type { AuthorityLevel } from '../domain/evidence/types';
 import { DEFAULT_MEDICAL_PLAN, type MedicalPlan } from '../domain/medicalPlan';
+import { showsAnatomy, type TwinView } from '../domain/twinView';
+import { createSymptomReport, type SymptomDraft, type SymptomInput, type SymptomReport } from '../domain/symptoms';
 import type {
   EnvironmentDef,
   EnvironmentId,
@@ -32,6 +34,14 @@ export interface StoreEvents extends Record<string, unknown> {
   medicalPlan: MedicalPlan;
   /** Real space weather was loaded or refreshed. */
   spaceWeather: SpaceWeather;
+  /** A discomfort report was added or removed. */
+  symptoms: readonly SymptomReport[];
+  /** "Report discomfort" was switched on or off: clicks on the body mark a spot instead of selecting. */
+  reportMode: boolean;
+  /** A spot was picked on the body and awaits its form (or was dropped: null). */
+  symptomDraft: SymptomDraft | null;
+  /** The twin is shown differently: astronaut, scan or anatomy. */
+  twinView: TwinView;
 }
 
 /** Anything that produces readings writes them here. */
@@ -57,6 +67,11 @@ export class HealthStore implements ReadingSink {
   private readonly interventionLog: Intervention[] = [];
   private plan: MedicalPlan = { ...DEFAULT_MEDICAL_PLAN };
   private weather: SpaceWeather | null = null;
+  private readonly symptomLog: SymptomReport[] = [];
+  private symptomSeq = 0;
+  private reporting = false;
+  private draft: SymptomDraft | null = null;
+  private view: TwinView = 'astronaut';
   /** Individual baselines, fitted once per indicator and then frozen. */
   private readonly baselines = new Map<IndicatorId, IndividualBaseline>();
 
@@ -97,6 +112,19 @@ export class HealthStore implements ReadingSink {
   get spaceWeather(): SpaceWeather | null {
     return this.weather;
   }
+  /** Discomfort reported on the body, oldest first. */
+  get symptoms(): readonly SymptomReport[] {
+    return this.symptomLog;
+  }
+  get twinView(): TwinView {
+    return this.view;
+  }
+  get reportMode(): boolean {
+    return this.reporting;
+  }
+  get symptomDraft(): SymptomDraft | null {
+    return this.draft;
+  }
   /** The crew member's own baseline for an indicator, once enough days have been recorded. */
   baselineOf(id: IndicatorId): IndividualBaseline | undefined {
     return this.baselines.get(id);
@@ -134,7 +162,21 @@ export class HealthStore implements ReadingSink {
   select(id: SystemId | null): void {
     if (this.selectedSystem === id) return;
     this.selectedSystem = id;
+    // Looking at one body system means looking at the anatomy, wherever the selection came from.
+    if (id !== null) this.setTwinView('anatomy');
     this.events.emit('selection', id);
+  }
+
+  /** Changes how the twin is shown. Going back to the astronaut puts away everything that needs the anatomy. */
+  setTwinView(view: TwinView): void {
+    if (this.view === view) return;
+    this.view = view;
+    if (!showsAnatomy(view)) {
+      this.setReportMode(false);
+      this.hover(null);
+      this.select(null);
+    }
+    this.events.emit('twinView', view);
   }
 
   hover(id: SystemId | null): void {
@@ -176,6 +218,40 @@ export class HealthStore implements ReadingSink {
     return intervention;
   }
 
+  setReportMode(enabled: boolean): void {
+    if (this.reporting === enabled) return;
+    this.reporting = enabled;
+    if (!enabled) this.setSymptomDraft(null);
+    // A spot can only be marked on a body that is on show.
+    else if (!showsAnatomy(this.view)) this.setTwinView('scan');
+    this.events.emit('reportMode', enabled);
+  }
+
+  setSymptomDraft(draft: SymptomDraft | null): void {
+    if (this.draft === draft) return;
+    this.draft = draft;
+    this.events.emit('symptomDraft', draft);
+  }
+
+  /**
+   * Adds a discomfort report to the mission log. It is an observation: no status, threshold
+   * or triage level changes because of it.
+   */
+  reportSymptom(input: SymptomInput): SymptomReport {
+    const report = createSymptomReport(++this.symptomSeq, this.now, input);
+    this.symptomLog.push(report);
+    this.events.emit('symptoms', this.symptomLog);
+    this.setReportMode(false);
+    return report;
+  }
+
+  removeSymptom(id: number): void {
+    const index = this.symptomLog.findIndex((report) => report.id === id);
+    if (index < 0) return;
+    this.symptomLog.splice(index, 1);
+    this.events.emit('symptoms', this.symptomLog);
+  }
+
   setSpaceWeather(weather: SpaceWeather): void {
     this.weather = weather;
     this.events.emit('spaceWeather', weather);
@@ -191,8 +267,11 @@ export class HealthStore implements ReadingSink {
     this.readings.clear();
     this.baselines.clear();
     this.interventionLog.length = 0;
+    this.symptomLog.length = 0;
     this.now = now;
     this.events.emit('interventions', this.interventionLog);
+    this.events.emit('symptoms', this.symptomLog);
+    this.setReportMode(false);
     this.recompute();
   }
 

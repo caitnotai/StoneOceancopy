@@ -202,6 +202,49 @@ optionally, the mission habitat, which selects the starting environment.
   the top bar, or `?intro` in the address, replays the film.
 - With "reduce motion" enabled, the film becomes a single still frame with all the text shown at once.
 
+### The health twin: astronaut, scan, anatomy
+
+The dashboard opens on a friendly astronaut; the anatomy appears only when the crew member asks for it.
+
+- `HealthTwin` (`src/scene/HealthTwin.ts`) holds two layers, the suit (`AstronautSuit`) and the anatomy
+  (`BodyModel`), and three views: `astronaut`, `scan` (the anatomy through a holographic suit) and `anatomy`.
+- "Explore my body" turns the camera to the front, thins the suit and brings the anatomy up system by system.
+  GSAP eases opacities and the camera only; the Three.js frame loop is unchanged.
+- The suit is visual only. Picking still goes through `Picker.ts` and `body.glb`; while the astronaut is shown
+  there is nothing to pick.
+- At rest the anatomy is a neutral grey-blue. A body system shows its status color only when it is selected
+  or needs attention (caution or critical).
+- `public/models/astronaut.glb` is optional and not in the repository yet: without it, a suit generated in
+  code is used (see `public/models/README.md`).
+- The figure breathes, and drifts very slightly in microgravity (station, transit). Reduced motion turns
+  both off and makes every transition immediate.
+
+### Reporting discomfort on the body
+
+"Report discomfort" (above the 3D view) turns the next click on the body into a pin instead of a selection.
+
+- `Picker.ts` returns the body systems under the pointer and the nearest surface point; `BodyViewport` converts
+  that point to the body's own frame and hands it to the store as plain `{x, y, z}`.
+- The model lives in `src/domain/symptoms.ts` (no Three.js, no DOM): intensity 1–10, type, optional notes.
+- `HealthStore.reportSymptom()` adds it to the mission log and emits `symptoms`; `SymptomMarkers` draws the pins,
+  the overview lists the reports and the trend chart marks them on the time axis.
+- A report is an observation. It **does not change any status, threshold or triage level**: there is no validated
+  rule linking a reported pain to a finding, so none was added. It only suggests the self-checks the catalog
+  already files under the same body system (and the dizziness score when dizziness is reported).
+
+### The side panel
+
+The triage verdict stays on top; three tabs (`src/ui/panel/`) disclose the rest step by step, all following the
+body system selected in 3D:
+
+1. **Overview**: active alerts, then one compact card per indicator (value, unit, status, 7-day sparkline).
+   Explanations sit behind a "?" button; mission background is folded away.
+2. **Trends** (`TrendChart.ts`): one indicator over 24 h, 7 days, 14 days or the recorded mission, with the
+   person's usual range (95%) when a baseline exists, a point readout (time, value, z-score), markers for
+   treatments and reported discomfort, and an optional second indicator on its own axis.
+3. **Protocol & evidence**: the collapsible Detect → Treat → Verify loop, authority levels, citations and
+   evidence class, for the selected indicator or system only.
+
 ### The 3D body
 
 The body is built from [BodyParts3D](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/desc.html),

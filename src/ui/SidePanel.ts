@@ -1,25 +1,15 @@
 import type { AppActions } from '../app/actions';
 import type { HealthStore } from '../data/HealthStore';
 import { formatDelay } from '../domain/catalog/environments';
-import { HAZARDS } from '../domain/catalog/systems';
 import { INDICATORS } from '../domain/catalog/indicators';
-import { thresholdsFor } from '../domain/engine/evaluate';
-import type { Intervention } from '../domain/engine/verify';
-import { provenanceOf } from '../domain/evidence/indicatorRules';
-import { PROVENANCE_LABEL } from '../domain/evidence/types';
-import { offerSteps } from '../domain/medicalPlan';
-import { severity, STATUS_GLYPH } from '../domain/status';
-import type { Evaluation, IndicatorEvaluation, SystemEvaluation, SystemId } from '../domain/types';
-import { h, setText, syncList } from './dom';
-import { formatValue, formatWhen, statusBadge, updateBadge } from './format';
-
-const OUTCOME_VIEW = {
-  pending: { glyph: '○', label: 'Waiting for a measured response', status: 'unknown' },
-  verified: { glyph: '●', label: 'Verified', status: 'nominal' },
-  not_verified: { glyph: '◆', label: 'Not verified', status: 'critical' },
-} as const;
-import { IndicatorCard } from './IndicatorCard';
-import { SpaceWeatherCard } from './SpaceWeatherCard';
+import { severity } from '../domain/status';
+import type { Evaluation, IndicatorId, SystemId } from '../domain/types';
+import { h, setText } from './dom';
+import { statusBadge, updateBadge } from './format';
+import type { PanelContext, PanelTab } from './panel/context';
+import { OverviewTab } from './panel/OverviewTab';
+import { ProtocolTab } from './panel/ProtocolTab';
+import { TrendsTab } from './panel/TrendsTab';
 
 const TRIAGE_ICON: Record<string, string> = {
   nominal: '●',
@@ -28,37 +18,100 @@ const TRIAGE_ICON: Record<string, string> = {
   'ground-consult': '◆',
 };
 
-/** Right column: the triage verdict, then either the mission overview or one system in detail. */
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'trends', label: 'Trends' },
+  { id: 'protocol', label: 'Protocol & evidence' },
+] as const;
+type TabId = (typeof TABS)[number]['id'];
+
+/**
+ * Right column. The triage verdict stays on top; below it, three tabs disclose detail step
+ * by step: the overview (what is happening), the trend (how it got here) and the protocol
+ * with its evidence (what to do and why). All three follow the body system selected in 3D.
+ */
 export class SidePanel {
   private readonly triage = h('section', { class: 'triage', 'aria-live': 'polite' });
   private readonly triageIcon = h('span', { class: 'triage-icon', 'aria-hidden': 'true' });
   private readonly triageHeadline = h('h2');
   private readonly triageDetail = h('p');
   private readonly triageLink = h('p', { class: 'triage-link' });
-  private readonly body = h('div', { class: 'panel-body' });
-  private view: { update(evaluation: Evaluation): void; dispose(): void } | null = null;
+  private readonly scopeName = h('h3');
+  private readonly scopeBadge = statusBadge('unknown');
+  private readonly back: HTMLButtonElement;
+  private readonly tabButtons: HTMLButtonElement[];
+  private readonly body = h('div', { class: 'panel-body', id: 'panel-tabpanel', role: 'tabpanel', tabIndex: 0 });
+  private view: PanelTab | null = null;
+  private tab: TabId = 'overview';
+  private indicator: IndicatorId | null = null;
 
   constructor(parent: HTMLElement, private readonly store: HealthStore, private readonly actions: AppActions) {
     this.triage.append(
       this.triageIcon,
       h('div', null, h('span', { class: 'eyebrow' }, 'What should I do?'), this.triageHeadline, this.triageDetail, this.triageLink),
     );
-    parent.append(this.triage, this.body);
-    store.events.on('selection', (id) => this.show(id));
+    this.back = h('button', { class: 'link-button', type: 'button', onclick: () => store.select(null) }, '← All systems');
+    this.tabButtons = TABS.map((tab) =>
+      h('button', { class: 'tab', type: 'button', role: 'tab', id: `panel-tab-${tab.id}`, 'aria-controls': 'panel-tabpanel', onclick: () => this.open(tab.id) }, tab.label),
+    );
+    const tablist = h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Panel sections', onkeydown: (event: KeyboardEvent) => this.onTabKey(event) }, ...this.tabButtons);
+    parent.append(this.triage, h('div', { class: 'panel-scope' }, this.back, h('div', { class: 'panel-scope-title' }, this.scopeName, this.scopeBadge)), tablist, this.body);
+
+    store.events.on('selection', (id) => {
+      // An indicator stays in focus only while its own body system is the one selected.
+      if (this.indicator && INDICATORS[this.indicator].systemId !== id) this.indicator = null;
+      // A system that needs attention opens on what to do about it, not on a summary.
+      const system = id ? store.evaluation.systems[id] : null;
+      if (system?.driver && severity(system.status) >= severity('caution')) {
+        this.tab = 'protocol';
+        this.indicator = system.driver.def.id;
+      }
+      this.show();
+    });
     store.events.on('data', (evaluation) => this.update(evaluation));
     store.events.on('interventions', () => this.update(store.evaluation));
     store.events.on('medicalPlan', () => this.update(store.evaluation));
+    store.events.on('environment', () => this.update(store.evaluation));
     // The live feed answers once, shortly after start: rebuild the view to show it.
-    store.events.on('spaceWeather', () => this.show(store.selected));
-    this.show(store.selected);
+    store.events.on('spaceWeather', () => this.show());
+    this.show();
   }
 
-  private show(id: SystemId | null): void {
+  private open(tab: TabId, indicator: IndicatorId | null = this.indicator): void {
+    this.tab = tab;
+    this.indicator = indicator;
+    this.show();
+  }
+
+  /** Rebuilds the current tab for the current selection. */
+  private show(): void {
+    const { store } = this;
     this.view?.dispose();
-    this.body.replaceChildren();
+    const context: PanelContext = {
+      store,
+      actions: this.actions,
+      system: store.selected,
+      indicator: this.indicator,
+      openTrend: (id) => this.open('trends', id),
+      openProtocol: (id) => this.open('protocol', id),
+      openSystem: (id) => this.openSystem(id),
+    };
+    this.view = this.tab === 'overview' ? new OverviewTab(context) : this.tab === 'trends' ? new TrendsTab(context) : new ProtocolTab(context);
+    this.body.replaceChildren(this.view.element);
     this.body.scrollTop = 0;
-    this.view = id ? new SystemDetail(this.body, id, this.store, this.actions) : new Overview(this.body, this.store, this.actions);
-    this.update(this.store.evaluation);
+    this.body.setAttribute('aria-labelledby', `panel-tab-${this.tab}`);
+    this.tabButtons.forEach((button, i) => {
+      const selected = TABS[i].id === this.tab;
+      button.setAttribute('aria-selected', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
+    this.update(store.evaluation);
+  }
+
+  private openSystem(id: SystemId): void {
+    this.indicator = null;
+    if (this.store.selected === id) this.show();
+    else this.store.select(id);
   }
 
   private update(evaluation: Evaluation): void {
@@ -69,239 +122,23 @@ export class SidePanel {
     setText(this.triageHeadline, triage.headline);
     setText(this.triageDetail, triage.detail);
     setText(this.triageLink, `${env.name} · signal to Earth takes ${formatDelay(env.commsDelaySec)} each way`);
+
+    const selected = this.store.selected;
+    this.back.hidden = !selected;
+    setText(this.scopeName, selected ? evaluation.systems[selected].def.name : 'All body systems');
+    this.scopeBadge.hidden = !selected;
+    if (selected) updateBadge(this.scopeBadge, evaluation.systems[selected].status);
     this.view?.update(evaluation);
   }
-}
 
-/** Shown when nothing is selected: what needs attention, which checks are due, where we are. */
-class Overview {
-  private readonly attention = h('div', { class: 'row-list' });
-  private readonly attentionEmpty = h('p', { class: 'empty' }, 'Nothing needs attention. Select a body system to see its indicators.');
-  private readonly due = h('div', { class: 'row-list' });
-  private readonly dueEmpty = h('p', { class: 'empty' }, 'All scheduled self-checks are up to date.');
-  private readonly environment = h('div', { class: 'facts' });
-  private readonly treatments = h('div', { class: 'row-list' });
-  private readonly treatmentsSection = h('section', { hidden: true }, h('h3', null, 'Treatments and their verification'), this.treatments);
-  private readonly drugsToggle: HTMLInputElement;
-
-  constructor(parent: HTMLElement, private readonly store: HealthStore, actions: AppActions) {
-    this.drugsToggle = h('input', {
-      type: 'checkbox',
-      id: 'drugs-preauthorized',
-      onchange: () => actions.setDrugsPreauthorized(this.drugsToggle.checked),
-    });
-    parent.append(
-      h('section', null, h('h3', null, 'Needs attention'), this.attention, this.attentionEmpty),
-      this.treatmentsSection,
-      ...(store.spaceWeather ? [new SpaceWeatherCard(store.spaceWeather).element] : []),
-      h('section', null, h('h3', null, 'Self-checks due'), this.due, this.dueEmpty),
-      h(
-        'section',
-        null,
-        h('h3', null, 'Mission medical plan'),
-        h('label', { class: 'check', for: 'drugs-preauthorized' }, this.drugsToggle, 'Drugs are pre-authorized in the medical plan'),
-        h('p', { class: 'reference' }, 'Off by default. While it is off, every medication step is withheld: this tool supports decisions, it does not prescribe.'),
-      ),
-      h('section', null, h('h3', null, 'Mission environment'), this.environment),
-      h(
-        'section',
-        { class: 'about' },
-        h('h3', null, 'About this prototype'),
-        h(
-          'p',
-          null,
-          'All readings come from a built-in simulator. Only two thresholds are NASA limits: cabin CO₂ (NASA-STD-3001) and retinal thickness (SANS clinical criteria). Every other range is illustrative and labeled as such. This is a concept for crew decision support, not a medical device.',
-        ),
-        h(
-          'p',
-          null,
-          'Body systems and risks follow the NASA Human Research Program. Built for the NASA Space Apps Challenge 2026; source code written with AI assistance.',
-        ),
-        h(
-          'p',
-          null,
-          '3D anatomy: ',
-          h('a', { href: 'https://dbarchive.biosciencedbc.jp/en/bodyparts3d/desc.html', target: '_blank', rel: 'noopener' }, 'BodyParts3D'),
-          ', © The Database Center for Life Science, licensed under CC Attribution 4.0 International. Meshes were simplified and grouped by body system; lung outlines, lymph nodes and inner ears were added.',
-        ),
-      ),
-    );
-  }
-
-  update(evaluation: Evaluation): void {
-    const { store } = this;
-    const flagged = Object.values(evaluation.systems)
-      .filter((s) => severity(s.status) >= severity('caution'))
-      .sort((a, b) => severity(b.status) - severity(a.status));
-    this.attentionEmpty.hidden = flagged.length > 0;
-    syncList<SystemEvaluation>(
-      this.attention,
-      flagged,
-      (s) => s.def.id,
-      (s) =>
-        h(
-          'button',
-          { class: 'row', type: 'button', onclick: () => store.select(s.def.id) },
-          h('span', { class: 'status-glyph', 'aria-hidden': 'true' }),
-          h(
-            'span',
-            { class: 'row-text' },
-            h('strong', null, s.def.name),
-            h('span', { class: 'row-sub' }),
-            h('span', { class: 'row-action' }),
-            h('span', { class: 'row-provenance' }),
-          ),
-        ),
-      (el, s) => {
-        el.dataset.status = s.status;
-        setText(el.querySelector('.status-glyph')!, STATUS_GLYPH[s.status]);
-        const driver = s.driver;
-        setText(
-          el.querySelector('.row-sub')!,
-          driver?.latest ? `${driver.def.name}: ${formatValue(driver.latest.value, driver.def)} ${driver.def.unit}` : '',
-        );
-        const steps = s.status === 'critical' ? driver?.def.guidance.critical : driver?.def.guidance.caution;
-        const first = steps ? offerSteps(steps, store.medicalPlan).find((step) => !step.withheld) : undefined;
-        setText(el.querySelector('.row-action')!, first ? `First step: ${first.text}` : '');
-        // No alert without its provenance: basis of the threshold and class of evidence.
-        const provenance = driver ? provenanceOf(driver.def.id, Boolean(driver.drift)) : undefined;
-        setText(
-          el.querySelector('.row-provenance')!,
-          provenance ? `${provenance.basisLabel} · ${PROVENANCE_LABEL[provenance.evidence.provenanceClass]}` : '',
-        );
-      },
-    );
-
-    this.drugsToggle.checked = store.medicalPlan.drugsPreauthorized;
-    const recent = store.interventions.slice(-4).reverse();
-    this.treatmentsSection.hidden = recent.length === 0;
-    syncList<Intervention>(
-      this.treatments,
-      recent,
-      (i) => String(i.id),
-      (i) =>
-        h(
-          'button',
-          { class: 'row', type: 'button', onclick: () => store.select(INDICATORS[i.indicatorId].systemId) },
-          h('span', { class: 'status-glyph', 'aria-hidden': 'true' }),
-          h('span', { class: 'row-text' }, h('strong', null, i.stepText), h('span', { class: 'row-sub' }), h('span', { class: 'row-action' })),
-        ),
-      (el, i) => {
-        const def = INDICATORS[i.indicatorId];
-        const view = OUTCOME_VIEW[i.outcome];
-        el.dataset.status = view.status;
-        setText(el.querySelector('.status-glyph')!, view.glyph);
-        const before = i.valueBefore === null ? 'no value' : `${formatValue(i.valueBefore, def)} ${def.unit}`;
-        const after = i.valueAfter === null ? '' : `, now ${formatValue(i.valueAfter, def)} ${def.unit}`;
-        setText(el.querySelector('.row-sub')!, `${view.label} · ${def.name}: ${before} before${after}`);
-        setText(el.querySelector('.row-action')!, `Authority level ${i.authorityLevel} · done at ${formatWhen(i.startedAt)}`);
-      },
-    );
-
-    this.dueEmpty.hidden = evaluation.due.length > 0;
-    syncList<IndicatorEvaluation>(
-      this.due,
-      evaluation.due,
-      (i) => i.def.id,
-      (i) =>
-        h(
-          'button',
-          { class: 'row', type: 'button', onclick: () => store.select(i.def.systemId) },
-          h('span', { class: 'status-glyph', 'aria-hidden': 'true' }, '○'),
-          h('span', { class: 'row-text' }, h('strong', null, i.def.name), h('span', { class: 'row-sub' }, `Due every ${i.def.cadenceHours} h · open to log it`)),
-        ),
-      () => undefined,
-    );
-
-    const env = store.environment;
-    const signature = env.id;
-    if (this.environment.dataset.env !== signature) {
-      this.environment.dataset.env = signature;
-      this.environment.replaceChildren(
-        h('p', null, h('strong', null, env.name), ` ${env.description}`),
-        h(
-          'dl',
-          null,
-          h('dt', null, 'Gravity'),
-          h('dd', null, env.gravityG === 0 ? 'Microgravity' : `${env.gravityG} g`),
-          h('dt', null, 'Signal delay'),
-          h('dd', null, `${formatDelay(env.commsDelaySec)} one way`),
-          h('dt', null, 'Radiation'),
-          h('dd', null, `${env.radiationMSvPerDay} mSv/day`),
-        ),
-        h('p', { class: 'reference' }, `${env.radiationReference} Observed environment, not an alert threshold.`),
-      );
-    }
-  }
-
-  dispose(): void {}
-}
-
-/** One body system: why it matters in space, its NASA risks, and a card per indicator. */
-class SystemDetail {
-  private readonly badge = statusBadge('unknown');
-  private readonly cards = new Map<string, IndicatorCard>();
-
-  constructor(parent: HTMLElement, private readonly id: SystemId, private readonly store: HealthStore, actions: AppActions) {
-    const system = store.evaluation.systems[id];
-    const def = system.def;
-    const cards = system.indicators.map((indicator) => {
-      const card = new IndicatorCard(indicator.def, actions);
-      this.cards.set(indicator.def.id, card);
-      return card.element;
-    });
-
-    parent.append(
-      h(
-        'section',
-        { class: 'system-head' },
-        h('button', { class: 'link-button', type: 'button', onclick: () => store.select(null) }, '← All systems'),
-        h('div', { class: 'system-title' }, h('h3', null, def.name), this.badge),
-        h('p', null, def.role),
-        h('p', null, h('strong', null, 'In space: '), def.spaceflightEffect),
-        h(
-          'div',
-          { class: 'chips' },
-          ...def.hazards.map((hazard) =>
-            h('a', { class: 'chip', href: HAZARDS[hazard].url, target: '_blank', rel: 'noopener' }, `Hazard: ${HAZARDS[hazard].name}`),
-          ),
-        ),
-        h(
-          'ul',
-          { class: 'links' },
-          ...def.risks.map((risk) => h('li', null, h('a', { href: risk.url, target: '_blank', rel: 'noopener' }, risk.name))),
-        ),
-        h(
-          'p',
-          { class: 'zone-legend' },
-          'Chart bands: ',
-          h('span', { class: 'swatch', dataset: { status: 'nominal' } }),
-          'nominal ',
-          h('span', { class: 'swatch', dataset: { status: 'caution' } }),
-          'caution ',
-          h('span', { class: 'swatch', dataset: { status: 'critical' } }),
-          'critical',
-        ),
-      ),
-      ...(id === 'radiation' && store.spaceWeather ? [new SpaceWeatherCard(store.spaceWeather).element] : []),
-      ...cards,
-    );
-  }
-
-  update(evaluation: Evaluation): void {
-    const system = evaluation.systems[this.id];
-    updateBadge(this.badge, system.status);
-    for (const indicator of system.indicators) {
-      this.cards
-        .get(indicator.def.id)
-        ?.update(indicator, this.store.history(indicator.def.id), thresholdsFor(indicator.def, this.store.environment), evaluation.missionTime, {
-          plan: this.store.medicalPlan,
-          intervention: this.store.latestIntervention(indicator.def.id),
-        });
-    }
-  }
-
-  dispose(): void {
-    this.cards.forEach((card) => card.dispose());
+  /** Arrow keys move between tabs, as in any tab list. */
+  private onTabKey(event: KeyboardEvent): void {
+    const current = TABS.findIndex((tab) => tab.id === this.tab);
+    const next = event.key === 'ArrowRight' ? current + 1 : event.key === 'ArrowLeft' ? current - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : -1;
+    if (next === -1 && event.key !== 'ArrowLeft') return;
+    event.preventDefault();
+    const index = (next + TABS.length) % TABS.length;
+    this.open(TABS[index].id);
+    this.tabButtons[index].focus();
   }
 }

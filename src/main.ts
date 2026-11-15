@@ -13,9 +13,11 @@ import { BodyViewport } from './scene/BodyViewport';
 import { h } from './ui/dom';
 import { SidePanel } from './ui/SidePanel';
 import { SimulatorBar, type SimulatorState } from './ui/SimulatorBar';
+import { SymptomReporter } from './ui/SymptomReporter';
 import './ui/styles.css';
 import { SystemList } from './ui/SystemList';
 import { TopBar } from './ui/TopBar';
+import { TwinViewControl } from './ui/TwinViewControl';
 
 /**
  * Composition root: the only file that knows every layer.
@@ -66,6 +68,8 @@ function bootstrap(profile: CrewProfile): void {
       simulator.applyCountermeasure(id);
     },
     setDrugsPreauthorized: (enabled) => store.setDrugsPreauthorized(enabled),
+    reportSymptom: (input) => void store.reportSymptom(input),
+    removeSymptom: (id) => store.removeSymptom(id),
   };
 
   new TopBar($('topbar'), store);
@@ -87,6 +91,8 @@ function bootstrap(profile: CrewProfile): void {
   new SystemList($('systems'), store);
   new SidePanel($('panel'), store, actions);
   new SimulatorBar($('simulator'), actions, simulatorState);
+  new SymptomReporter($('viewport-tools'), $('symptom-form'), $('hint'), store, actions);
+  new TwinViewControl($('viewport-tools'), $('hint'), store);
 
   const statuses: HealthStatus[] = ['nominal', 'caution', 'critical', 'unknown'];
   $('legend').append(
@@ -96,7 +102,10 @@ function bootstrap(profile: CrewProfile): void {
   );
 
   try {
-    new BodyViewport($('stage'), store, { modelUrl: `${import.meta.env.BASE_URL}models/body.glb` });
+    new BodyViewport($('stage'), store, {
+      modelUrl: `${import.meta.env.BASE_URL}models/body.glb`,
+      suitUrl: `${import.meta.env.BASE_URL}models/astronaut.glb`,
+    });
   } catch (error) {
     console.error(error);
     $('stage').append(

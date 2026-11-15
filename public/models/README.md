@@ -29,3 +29,17 @@ Lymph nodes and inner ears are not in the atlas; the app draws them at run time.
 above. Note that the comment header inside the 2011 OBJ files still names the earlier
 licence, CC BY-SA 2.1 Japan. If you redistribute this model, keeping it under these same
 terms and keeping the attribution satisfies both.
+
+# astronaut.glb (optional)
+
+The friendly outer layer of the health twin: the suit shown before the anatomy is explored.
+**This file is not in the repository yet.** While it is missing, the app draws a built-in
+suit generated in code (`src/scene/suit/ProceduralSuit.ts`), so nothing breaks.
+
+To use a real model, save it here as `astronaut.glb`. No code change is needed:
+
+- any size and origin work: the app fits it to 1.84 m, feet on the ground, centred;
+- it should face +z and stand upright (+y), arms at its sides, to enclose `body.glb`;
+- plain or Meshopt-compressed glTF binary; Draco is not supported;
+- it is visual only: nothing in it is selectable, and the anatomy stays in `body.glb`;
+- record its author, source and licence in this file before committing it.
