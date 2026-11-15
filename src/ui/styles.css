@@ -510,8 +510,10 @@ a {
 }
 
 #scenario {
+  border-radius: 22px;
   background: linear-gradient(100deg, #bdfcf7 0%, #d9fff7 30%, #ffffff 52%, #efc8ff 75%, #d69cff 100%);
   color: #131926;
+  font-weight: 600;
 }
 
 .sim-row {
@@ -563,6 +565,13 @@ select {
   border-color: var(--border-strong);
   color: var(--text-2);
   font-weight: 500;
+}
+
+#simulator .button-quiet {
+  overflow: hidden;
+  border-radius: 23px;
+  background-color: rgba(35, 85, 152, 1);
+  color: rgba(242, 244, 255, 1);
 }
 
 .link-button {
@@ -1773,11 +1782,14 @@ details p {
 .tool-toggle {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 7px;
+  margin-right: auto;
+  margin-left: auto;
   padding: 6px 12px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: rgba(13, 17, 27, 0.85);
+  background: linear-gradient(110deg, #223a67 0%, #315b98 35%, #684fbd 68%, #e05ad8 100%);
   color: var(--text);
   font-size: 13px;
   font-weight: 550;
