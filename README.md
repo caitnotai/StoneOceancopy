@@ -202,6 +202,23 @@ optionally, the mission habitat, which selects the starting environment.
   the top bar, or `?intro` in the address, replays the film.
 - With "reduce motion" enabled, the film becomes a single still frame with all the text shown at once.
 
+### The health twin: astronaut, scan, anatomy
+
+The dashboard opens on a friendly astronaut; the anatomy appears only when the crew member asks for it.
+
+- `HealthTwin` (`src/scene/HealthTwin.ts`) holds two layers, the suit (`AstronautSuit`) and the anatomy
+  (`BodyModel`), and three views: `astronaut`, `scan` (the anatomy through a holographic suit) and `anatomy`.
+- "Explore my body" turns the camera to the front, thins the suit and brings the anatomy up system by system.
+  GSAP eases opacities and the camera only; the Three.js frame loop is unchanged.
+- The suit is visual only. Picking still goes through `Picker.ts` and `body.glb`; while the astronaut is shown
+  there is nothing to pick.
+- At rest the anatomy is a neutral grey-blue. A body system shows its status color only when it is selected
+  or needs attention (caution or critical).
+- `public/models/astronaut.glb` is optional and not in the repository yet: without it, a suit generated in
+  code is used (see `public/models/README.md`).
+- The figure breathes, and drifts very slightly in microgravity (station, transit). Reduced motion turns
+  both off and makes every transition immediate.
+
 ### Reporting discomfort on the body
 
 "Report discomfort" (above the 3D view) turns the next click on the body into a pin instead of a selection.

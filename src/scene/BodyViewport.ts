@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import type { HealthStore } from '../data/HealthStore';
 import { SYSTEMS } from '../domain/catalog/systems';
-import { STATUS_GLYPH, STATUS_LABEL } from '../domain/status';
+import { STATUS_COLOR, STATUS_GLYPH, STATUS_LABEL } from '../domain/status';
+import type { TwinView } from '../domain/twinView';
 import { SYSTEM_IDS, type Evaluation, type SystemId } from '../domain/types';
 import { createBackdrop } from './backdrop';
 import type { BodyModel, Vitals } from './BodyModel';
+import { HealthTwin } from './HealthTwin';
 import { Picker } from './Picker';
 import { RadiationField } from './RadiationField';
 import { SceneManager } from './SceneManager';
+import { ProceduralSuit } from './suit/ProceduralSuit';
 import { SymptomMarkers } from './SymptomMarkers';
 import { SystemVisuals } from './SystemVisuals';
 
@@ -18,6 +21,8 @@ const WHOLE_BODY_HEIGHT = 1.1;
 export interface BodyViewportOptions {
   /** URL of the anatomical model (GLB). */
   modelUrl: string;
+  /** URL of the astronaut suit (GLB). Optional: a built-in suit is used while the file does not exist. */
+  suitUrl?: string;
 }
 
 /**
@@ -30,6 +35,8 @@ export interface BodyViewportOptions {
 export class BodyViewport {
   private readonly scene: SceneManager;
   private readonly visuals = new SystemVisuals();
+  private readonly twin = new HealthTwin(this.visuals);
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   private readonly picker: Picker;
   private readonly radiation = new RadiationField();
   private readonly symptomMarkers = new SymptomMarkers();
@@ -39,6 +46,7 @@ export class BodyViewport {
   private readonly vitals: Vitals = { heartRateBpm: 62, breathsPerMinute: 14 };
   private readonly unsubscribe: (() => void)[] = [];
   private model: BodyModel | null = null;
+  private readonly overall = new THREE.Color();
 
   constructor(
     private readonly container: HTMLElement,
@@ -47,7 +55,8 @@ export class BodyViewport {
   ) {
     this.scene = new SceneManager(container);
     const backdrop = createBackdrop();
-    this.scene.scene.add(backdrop.object, this.radiation.object, this.symptomMarkers.object);
+    this.scene.scene.add(backdrop.object, this.radiation.object, this.symptomMarkers.object, this.twin.root);
+    this.twin.setSuit(new ProceduralSuit());
 
     this.tooltip = document.createElement('div');
     this.tooltip.className = 'viewport-tooltip';
@@ -60,7 +69,8 @@ export class BodyViewport {
     this.picker = new Picker(
       this.scene.renderer.domElement,
       this.scene.camera,
-      () => this.model,
+      // While the astronaut is on show there is no anatomy to point at.
+      () => (this.twin.explorable ? this.model : null),
       (id) => store.hidden.has(id),
       {
         onHover: (stack, x, y) => this.showHover(stack, x, y),
@@ -76,10 +86,13 @@ export class BodyViewport {
       store.events.on('symptoms', () => this.applySymptoms()),
       store.events.on('symptomDraft', () => this.applySymptoms()),
       store.events.on('reportMode', () => this.applyReportMode()),
+      store.events.on('twinView', (view) => this.applyView(view)),
+      store.events.on('environment', (env) => this.twin.setWeightless(env.gravityG === 0)),
       this.scene.onFrame((dt, elapsed) => {
         this.picker.update();
         this.visuals.update(dt, elapsed);
         this.model?.update(elapsed, this.vitals);
+        this.twin.update(dt, elapsed, this.vitals);
         this.radiation.setColor(this.visuals.colorOf('radiation'));
         this.radiation.update(dt);
         this.symptomMarkers.update(elapsed, this.scene.camera);
@@ -91,14 +104,18 @@ export class BodyViewport {
     this.visuals.setSelected(store.selected);
     this.applySymptoms();
     this.applyReportMode();
+    this.twin.setWeightless(store.environment.gravityG === 0);
+    this.twin.setView(store.twinView);
     this.scene.start();
     void this.loadModel(options.modelUrl);
+    if (options.suitUrl) void this.loadSuit(options.suitUrl);
   }
 
   dispose(): void {
     this.unsubscribe.forEach((off) => off());
     this.picker.dispose();
     this.symptomMarkers.dispose();
+    this.twin.dispose();
     this.model?.dispose();
     this.scene.dispose();
     this.tooltip.remove();
@@ -126,22 +143,22 @@ export class BodyViewport {
   }
 
   private setModel(model: BodyModel): void {
-    if (this.model) {
-      this.scene.scene.remove(this.model.root);
-      this.model.dispose();
-    }
+    const previous = this.model;
     this.model = model;
-    this.scene.scene.add(model.root);
+    this.twin.setBody(model, previous);
+    previous?.dispose();
     // Pins are stored in the body's frame: they follow whichever model is shown.
     model.root.add(this.symptomMarkers.object);
     this.visuals.setModel(model);
     this.bounds.clear();
     for (const [id, layer] of model.layers) this.bounds.set(id, new THREE.Box3().setFromObject(layer.group));
+    this.symptomMarkers.object.visible = this.store.twinView !== 'astronaut';
     this.applySelection(this.store.selected);
   }
 
   private applyEvaluation(evaluation: Evaluation): void {
     for (const id of SYSTEM_IDS) this.visuals.setStatus(id, evaluation.systems[id].status);
+    this.twin.setStatusColor(this.overall.set(STATUS_COLOR[evaluation.triage.status]));
 
     const heartRate = evaluation.systems.cardiovascular.indicators.find((i) => i.def.id === 'heartRate')?.latest?.value;
     if (heartRate) this.vitals.heartRateBpm = heartRate;
@@ -181,6 +198,25 @@ export class BodyViewport {
     }
     const current = this.store.selected ? stack.indexOf(this.store.selected) : -1;
     this.store.select(stack[(current + 1) % stack.length]);
+  }
+
+  /** A model at `url` replaces the built-in suit; if there is none, nothing changes. */
+  private async loadSuit(url: string): Promise<void> {
+    const { GltfSuit } = await import('./suit/GltfSuit');
+    const suit = await GltfSuit.load(url);
+    if (suit) this.twin.setSuit(suit);
+  }
+
+  private applyView(view: TwinView): void {
+    const leavingAstronaut = this.twin.view === 'astronaut';
+    this.twin.setView(view);
+    this.symptomMarkers.object.visible = view !== 'astronaut';
+    // Starting to explore: bring the figure round to face the viewer, whole body in frame.
+    if (leavingAstronaut && !this.store.selected) this.scene.faceFront(this.reducedMotion ? 0 : 1.6);
+    if (view === 'astronaut') {
+      this.tooltip.hidden = true;
+      this.scene.focusOn(null);
+    }
   }
 
   private applySymptoms(): void {

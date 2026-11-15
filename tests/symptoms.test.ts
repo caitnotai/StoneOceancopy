@@ -85,3 +85,45 @@ describe('symptom reports (store)', () => {
     expect(store.symptomDraft).toBeNull();
   });
 });
+
+describe('twin view (store)', () => {
+  it('starts on the astronaut', () => {
+    expect(new HealthStore('iss').twinView).toBe('astronaut');
+  });
+
+  it('opens the anatomy when a body system is selected, from anywhere', () => {
+    const store = new HealthStore('iss');
+    const order: string[] = [];
+    store.events.on('twinView', (view) => order.push(`view:${view}`));
+    store.events.on('selection', (id) => order.push(`selection:${id}`));
+    store.select('skeletal');
+    expect(store.twinView).toBe('anatomy');
+    expect(order).toEqual(['view:anatomy', 'selection:skeletal']);
+  });
+
+  it('puts away selection, hover and report mode when going back to the astronaut', () => {
+    const store = new HealthStore('iss');
+    store.select('neuro');
+    store.hover('neuro');
+    store.setReportMode(true);
+    store.setTwinView('astronaut');
+    expect(store.selected).toBeNull();
+    expect(store.hovered).toBeNull();
+    expect(store.reportMode).toBe(false);
+    expect(store.twinView).toBe('astronaut');
+  });
+
+  it('shows the body before a spot can be marked on it', () => {
+    const store = new HealthStore('iss');
+    store.setReportMode(true);
+    expect(store.twinView).toBe('scan');
+  });
+
+  it('does not touch the evaluation', () => {
+    const store = new HealthStore('iss');
+    const before = JSON.stringify(store.evaluation);
+    store.setTwinView('scan');
+    store.setTwinView('anatomy');
+    expect(JSON.stringify(store.evaluation)).toBe(before);
+  });
+});

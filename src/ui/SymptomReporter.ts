@@ -20,7 +20,6 @@ export class SymptomReporter {
   private readonly intensityValue = h('output', { class: 'symptom-intensity-value', for: 'symptom-intensity' });
   private readonly notes: HTMLTextAreaElement;
   private readonly error = h('p', { class: 'symptom-error', role: 'alert' });
-  private readonly idleHint: string;
 
   constructor(
     tools: HTMLElement,
@@ -29,7 +28,6 @@ export class SymptomReporter {
     private readonly store: HealthStore,
     private readonly actions: AppActions,
   ) {
-    this.idleHint = hint.textContent ?? '';
     this.toggle = h(
       'button',
       { class: 'tool-toggle', type: 'button', 'aria-pressed': 'false', onclick: () => store.setReportMode(!store.reportMode) },
@@ -97,7 +95,8 @@ export class SymptomReporter {
 
   private applyMode(enabled: boolean): void {
     this.toggle.setAttribute('aria-pressed', String(enabled));
-    setText(this.hint, enabled ? HINT_REPORTING : this.idleHint);
+    // The view control writes the everyday hint; this one only speaks while reporting.
+    if (enabled) setText(this.hint, HINT_REPORTING);
     this.hint.classList.toggle('is-active', enabled);
   }
 
