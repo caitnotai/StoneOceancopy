@@ -10,8 +10,14 @@ const COLORS: Record<HealthStatus, THREE.Color> = {
   critical: new THREE.Color(STATUS_COLOR.critical),
 };
 
-const DIMMED_OPACITY = 0.07;
+/** The body at rest: a calm grey-blue, so that only what matters carries a status color. */
+const NEUTRAL = new THREE.Color(0x7f95b8);
+const RESTING_OPACITY = 0.62;
+const DIMMED_OPACITY = 0.09;
 const DIMMED_HOVER_OPACITY = 0.3;
+/** The order in which the anatomy comes up when it is revealed: frame first, wrapping tissue last. */
+const REVEAL_ORDER: SystemId[] = ['skeletal', 'cardiovascular', 'respiratory', 'metabolic', 'neuro', 'sensory', 'immune', 'muscular', 'radiation'];
+const REVEAL_OVERLAP = 0.55;
 
 interface LayerState {
   status: HealthStatus;
@@ -32,6 +38,7 @@ export class SystemVisuals {
   private selected: SystemId | null = null;
   private hovered: SystemId | null = null;
   private hidden: ReadonlySet<SystemId> = new Set();
+  private reveal = 1;
 
   constructor() {
     for (const id of SYSTEM_IDS) {
@@ -60,6 +67,16 @@ export class SystemVisuals {
     this.hidden = hidden;
   }
 
+  /** 0 = the anatomy is not shown at all, 1 = fully shown. In between, systems appear one after another. */
+  setReveal(reveal: number): void {
+    this.reveal = reveal;
+  }
+
+  /** The status color of a system, whether or not it is currently drawn in it. */
+  statusColorOf(id: SystemId): THREE.Color {
+    return COLORS[this.state.get(id)?.status ?? 'unknown'];
+  }
+
   colorOf(id: SystemId): THREE.Color {
     return this.state.get(id)?.color ?? COLORS.unknown;
   }
@@ -72,7 +89,10 @@ export class SystemVisuals {
       const isHovered = this.hovered === id;
       const dimmed = this.selected !== null && !isSelected;
 
-      const targetOpacity = dimmed ? (isHovered ? DIMMED_HOVER_OPACITY : DIMMED_OPACITY) : 1;
+      // Only what is selected or needs attention shows its status color; the rest stays neutral.
+      const flagged = s.status === 'caution' || s.status === 'critical';
+      const highlighted = isSelected || flagged;
+      const targetOpacity = dimmed ? (isHovered ? DIMMED_HOVER_OPACITY : DIMMED_OPACITY) : highlighted || isHovered ? 1 : RESTING_OPACITY;
       // Alarm pulse: a second, non-color signal that something needs attention.
       const pulse =
         s.status === 'critical'
@@ -82,18 +102,20 @@ export class SystemVisuals {
             : 0;
       // Systems that need attention glow more than healthy ones, so they stand out at a glance.
       const alert = s.status === 'critical' ? 0.55 : s.status === 'caution' ? 0.35 : 0;
-      const targetEmphasis = (isSelected ? 0.45 : 0) + (isHovered ? 0.4 : 0) + alert + pulse;
+      const targetEmphasis = (isSelected ? 0.45 : 0) + (isHovered ? 0.35 : 0) + alert + pulse;
 
-      s.color.lerp(COLORS[s.status], ease);
+      s.color.lerp(highlighted ? COLORS[s.status] : NEUTRAL, ease);
       s.opacity += (targetOpacity - s.opacity) * ease;
       s.emphasis += (targetEmphasis - s.emphasis) * Math.min(1, ease * 2);
       s.focus += ((isSelected ? 1 : 0) - s.focus) * ease;
 
       const layer = this.model?.layers.get(id);
       if (!layer) continue;
-      layer.group.visible = !this.hidden.has(id);
+      const order = REVEAL_ORDER.indexOf(id) / (REVEAL_ORDER.length - 1);
+      const shown = THREE.MathUtils.clamp((this.reveal * (1 + REVEAL_OVERLAP) - order * REVEAL_OVERLAP) / 1, 0, 1) ** 1.5;
+      layer.group.visible = !this.hidden.has(id) && shown > 0.01;
       if (!layer.group.visible) continue;
-      for (const material of layer.materials) material.apply(s.color, s.emphasis, s.opacity, elapsed, s.focus);
+      for (const material of layer.materials) material.apply(s.color, s.emphasis, s.opacity * shown, elapsed, s.focus);
     }
   }
 }

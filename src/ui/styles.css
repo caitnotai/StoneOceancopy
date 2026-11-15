@@ -1927,3 +1927,43 @@ details p {
     display: block;
   }
 }
+
+/* ---------- The twin: astronaut, scan, anatomy ---------- */
+#viewport-tools {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tool-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, #fff);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 22px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.tool-primary:hover {
+  filter: brightness(1.1);
+}
+
+/* A small figure inside a scan frame. */
+.tool-primary-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid currentColor;
+  background:
+    radial-gradient(circle at 50% 28%, currentColor 0 2.2px, transparent 2.6px),
+    linear-gradient(currentColor, currentColor) 50% 78% / 5px 6px no-repeat;
+}
+
+.twin-switch {
+  background: rgba(13, 17, 27, 0.85);
+}

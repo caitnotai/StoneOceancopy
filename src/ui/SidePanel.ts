@@ -2,6 +2,7 @@ import type { AppActions } from '../app/actions';
 import type { HealthStore } from '../data/HealthStore';
 import { formatDelay } from '../domain/catalog/environments';
 import { INDICATORS } from '../domain/catalog/indicators';
+import { severity } from '../domain/status';
 import type { Evaluation, IndicatorId, SystemId } from '../domain/types';
 import { h, setText } from './dom';
 import { statusBadge, updateBadge } from './format';
@@ -59,6 +60,12 @@ export class SidePanel {
     store.events.on('selection', (id) => {
       // An indicator stays in focus only while its own body system is the one selected.
       if (this.indicator && INDICATORS[this.indicator].systemId !== id) this.indicator = null;
+      // A system that needs attention opens on what to do about it, not on a summary.
+      const system = id ? store.evaluation.systems[id] : null;
+      if (system?.driver && severity(system.status) >= severity('caution')) {
+        this.tab = 'protocol';
+        this.indicator = system.driver.def.id;
+      }
       this.show();
     });
     store.events.on('data', (evaluation) => this.update(evaluation));

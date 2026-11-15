@@ -6,6 +6,7 @@ import { verifyIntervention, type Intervention } from '../domain/engine/verify';
 import { INDICATOR_RULES } from '../domain/evidence/indicatorRules';
 import type { AuthorityLevel } from '../domain/evidence/types';
 import { DEFAULT_MEDICAL_PLAN, type MedicalPlan } from '../domain/medicalPlan';
+import { showsAnatomy, type TwinView } from '../domain/twinView';
 import { createSymptomReport, type SymptomDraft, type SymptomInput, type SymptomReport } from '../domain/symptoms';
 import type {
   EnvironmentDef,
@@ -39,6 +40,8 @@ export interface StoreEvents extends Record<string, unknown> {
   reportMode: boolean;
   /** A spot was picked on the body and awaits its form (or was dropped: null). */
   symptomDraft: SymptomDraft | null;
+  /** The twin is shown differently: astronaut, scan or anatomy. */
+  twinView: TwinView;
 }
 
 /** Anything that produces readings writes them here. */
@@ -68,6 +71,7 @@ export class HealthStore implements ReadingSink {
   private symptomSeq = 0;
   private reporting = false;
   private draft: SymptomDraft | null = null;
+  private view: TwinView = 'astronaut';
   /** Individual baselines, fitted once per indicator and then frozen. */
   private readonly baselines = new Map<IndicatorId, IndividualBaseline>();
 
@@ -112,6 +116,9 @@ export class HealthStore implements ReadingSink {
   get symptoms(): readonly SymptomReport[] {
     return this.symptomLog;
   }
+  get twinView(): TwinView {
+    return this.view;
+  }
   get reportMode(): boolean {
     return this.reporting;
   }
@@ -155,7 +162,21 @@ export class HealthStore implements ReadingSink {
   select(id: SystemId | null): void {
     if (this.selectedSystem === id) return;
     this.selectedSystem = id;
+    // Looking at one body system means looking at the anatomy, wherever the selection came from.
+    if (id !== null) this.setTwinView('anatomy');
     this.events.emit('selection', id);
+  }
+
+  /** Changes how the twin is shown. Going back to the astronaut puts away everything that needs the anatomy. */
+  setTwinView(view: TwinView): void {
+    if (this.view === view) return;
+    this.view = view;
+    if (!showsAnatomy(view)) {
+      this.setReportMode(false);
+      this.hover(null);
+      this.select(null);
+    }
+    this.events.emit('twinView', view);
   }
 
   hover(id: SystemId | null): void {
@@ -201,6 +222,8 @@ export class HealthStore implements ReadingSink {
     if (this.reporting === enabled) return;
     this.reporting = enabled;
     if (!enabled) this.setSymptomDraft(null);
+    // A spot can only be marked on a body that is on show.
+    else if (!showsAnatomy(this.view)) this.setTwinView('scan');
     this.events.emit('reportMode', enabled);
   }
 
