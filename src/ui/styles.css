@@ -1168,3 +1168,43 @@ details p {
 .space-weather dt {
   color: var(--muted);
 }
+
+/* ---------- Crew member chip: also the way back to the introduction ---------- */
+.crew-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  min-height: 32px;
+  padding: 3px 12px 3px 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.crew-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.crew-chip-initial {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crew-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

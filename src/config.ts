@@ -1,5 +1,5 @@
 /** Working title: change it here and it changes everywhere. */
-export const APP_TITLE = 'Crew Health Twin';
+export const APP_TITLE = 'HELIOS';
 export const APP_SUBTITLE = 'Astronaut self-assessment console';
 
 /**
