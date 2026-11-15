@@ -1726,14 +1726,10 @@ details p {
   font-size: 13px;
 }
 
-.protocol-list {
+.protocol-cards {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.protocol-list:empty {
-  display: none;
 }
 
 .protocol-card {
@@ -1789,7 +1785,7 @@ details p {
   padding: 6px 12px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: linear-gradient(110deg, #223a67 0%, #315b98 35%, #684fbd 68%, #e05ad8 100%);
+  background: rgba(12, 0, 37, 1);
   color: var(--text);
   font-size: 13px;
   font-weight: 550;
@@ -1807,7 +1803,7 @@ details p {
 
 .tool-toggle[aria-pressed='true'] {
   border-color: var(--symptom);
-  background: color-mix(in srgb, var(--symptom) 22%, var(--surface));
+  background: rgba(12, 0, 37, 1);
 }
 
 #hint.is-active {
